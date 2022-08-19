@@ -5,6 +5,7 @@ rng = np.random.default_rng()
 
 phi_const = 1
 phi_range = 1
+psi_range = 1
 sigma_const = 1
 beta = 1
 
@@ -17,6 +18,10 @@ def S_phi(adj, phi, c):
     return S
 
 
+def S_psi(adj, phi, c):
+    return 0
+
+
 def S_sigma(adj, sigma, c):
     S = 0
     for i in range(3):
@@ -25,14 +30,28 @@ def S_sigma(adj, sigma, c):
     return S
 
 
+def update_field(i, adj, field, field_range, S, b):
+    c = i // 3
+    field_new = np.copy(field)
+    field_new[c] += field_range * np.random.normal(field[0].shape)
+    S_old = S(adj, field, c)
+    S_new = S_phi(adj, field_new, c)
+    p = np.exp(-b * (S_new - S_old))
+
+    if p > np.random.rand():
+        field = field_new
+    return field
+
+
 class Manifold:
-    # Manifolds build by piecing together 2-simplices (triangles)
+    # Simplicial Manifold: created by piecing triangles together with the topology of a sphere
 
     def __init__(self, N):
         self.N = N
         self.adj = fan_triangulation(N)
         self.vert_n, self.vert = vertex_list(self.adj)
         self.phi = np.zeros(N)
+        self.psi = np.zeros((N, 2))
         self.sigma = np.ones(N)
 
     def random_flip(self, b, strategy=['gravity']):
@@ -41,7 +60,10 @@ class Manifold:
             self.flip(random_side, b)
         if 'scalar' in strategy:
             random_side = rng.integers(0, len(self.adj))
-            self.vary_phi(random_side, b)
+            self.phi = update_field(random_side, self.adj, self.field, phi_range, S_phi, b)
+        if 'spinor' in strategy:
+            random_side = rng.integers(0, len(self.adj))
+            self.psi = update_field(random_side, self.adj, self.psi, psi_range, S_psi, b)
         if 'ising' in strategy:
             random_side = rng.integers(0, len(self.adj))
             self.vary_sigma(random_side, b)
@@ -72,27 +94,19 @@ class Manifold:
 
         c1 = i // 3
         c2 = k // 3
+
         S_old_phi = S_phi(self.adj, self.phi, c1) + S_phi(self.adj, self.phi, c2)
         S_new_phi = S_phi(adj_new, self.phi, c1) + S_phi(adj_new, self.phi, c2)
         S_old_sigma = S_sigma(self.adj, self.sigma, c1) + S_sigma(self.adj, self.sigma, c2)
         S_new_sigma = S_sigma(adj_new, self.sigma, c1) + S_sigma(adj_new, self.sigma, c2)
+
         dS_phi = S_new_phi - S_old_phi
         dS_sigma = S_new_sigma - S_old_sigma
         dS = dS_phi + dS_sigma
-        #S_old, S_new = S_old_phi + S_old_sigma, S_new_phi + S_new_sigma
+
         p = np.exp(-b * dS)
         if p > np.random.rand():
             self.adj = adj_new
-
-
-
-        """
-            print('flipped')
-        else: print('unchanged')
-        print(f'{S_old = }' + f'{ S_new = }' + f'{ p = }')
-        print()
-        """
-
         return True
 
     def vary_phi(self, i, b):
