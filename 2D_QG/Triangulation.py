@@ -3,11 +3,22 @@ from Graph_utils import *
 
 rng = np.random.default_rng()
 
+# beta is the inverse strength of gravity
+beta = 1
+
+# scalar field params
 phi_const = 1
 phi_range = 1
-psi_range = 1
+
+# ising params
 sigma_const = 1
-beta = 1
+
+# spinor field params
+psi_const = 1
+psi_range = 1
+gamma0 = [[1, 0], [0, -1]]
+gamma1 = [[0, 1], [1, 0]]
+gamma = [gamma0, gamma1]
 
 
 def S_phi(adj, phi, c):
@@ -18,8 +29,12 @@ def S_phi(adj, phi, c):
     return S
 
 
-def S_psi(adj, phi, c):
-    return 0
+def S_psi(adj, psi, c):
+    S = 0
+    for i in range(3):
+        adj_c = adj[3 * c + i] // 3
+        S += psi_const * (psi[c] - psi[adj_c]) ** 2
+    return S
 
 
 def S_sigma(adj, sigma, c):
@@ -33,7 +48,7 @@ def S_sigma(adj, sigma, c):
 def update_field(i, adj, field, field_range, S, b):
     c = i // 3
     field_new = np.copy(field)
-    field_new[c] += field_range * np.random.normal(field[0].shape)
+    field_new[c] += field_range * np.random.normal(size=field[0].shape)
     S_old = S(adj, field, c)
     S_new = S_phi(adj, field_new, c)
     p = np.exp(-b * (S_new - S_old))
@@ -60,7 +75,7 @@ class Manifold:
             self.flip(random_side, b)
         if 'scalar' in strategy:
             random_side = rng.integers(0, len(self.adj))
-            self.phi = update_field(random_side, self.adj, self.field, phi_range, S_phi, b)
+            self.phi = update_field(random_side, self.adj, self.phi, phi_range, S_phi, b)
         if 'spinor' in strategy:
             random_side = rng.integers(0, len(self.adj))
             self.psi = update_field(random_side, self.adj, self.psi, psi_range, S_psi, b)
@@ -109,24 +124,6 @@ class Manifold:
             self.adj = adj_new
         return True
 
-    def vary_phi(self, i, b):
-        c = i // 3
-        phi_new = np.copy(self.phi)
-        phi_new[c] += phi_range * np.random.randn()
-        S_old = S_phi(self.adj, self.phi, c)
-        S_new = S_phi(self.adj, phi_new, c)
-        p = np.exp(-b * (S_new - S_old))
-
-        if p > np.random.rand():
-            self.phi = phi_new
-
-        """
-            print('flipped')
-        else: print('unchanged')
-        print(f'{S_old = }' + f'{ S_new = }' + f'{ p = }')
-        print()
-        """
-
     def vary_sigma(self, i, b):
         c = i // 3
         sigma_new = np.copy(self.sigma)
@@ -138,6 +135,4 @@ class Manifold:
         if p > np.random.rand():
             self.sigma = sigma_new
 
-    def T_trace(self, beta, n):
-        return 0
 
