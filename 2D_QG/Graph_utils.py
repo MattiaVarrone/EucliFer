@@ -103,36 +103,6 @@ def is_sphere_triangulation(adj):
     return num_vert - num_edge + num_face == 2
 
 
-def dist_prof(adj,max_distance=30):
-    '''Return array `profile` of size `max_distance` such that `profile[r]` is␣
-    ↪the number
-    of vertices that have distance r to a randomly chosen initial vertex.'''
-    profile = np.zeros((max_distance),dtype=np.int32)
-    neighbors = vertex_neighbors_list(adj)
-    num_vertices = len(neighbors)
-    start = rng.integers(num_vertices) # random starting vertex
-    distance = np.full(num_vertices,-1,dtype=np.int32) # array tracking theknown distances (-1 is unknown)
-    queue = deque([start])
-    # use an exploration queue for the breadth-first search
-    distance[start] = 0
-    profile[0] = 1  # of course there is exactly 1 vertex at distance 0
-    while queue:
-        current = queue.pop()
-        d = distance[current] + 1  # every unexplored neighbour will have this distance
-        if d >= max_distance:
-            break
-        for nbr in neighbors[current]:
-            if distance[nbr] == -1:  # this neighboring vertex has not been␣explored yet
-                distance[nbr] = d
-                profile[d] += 1
-                queue.appendleft(nbr)
-    # add it to the exploration queue
-    return profile
 
-
-def batch_estimate(data,observable,num_batches):
-    batch_size = len(data)//num_batches
-    values = [observable(data[i*batch_size:(i+1)*batch_size]) for i in range(num_batches)]
-    return np.mean(values), np.std(values)/np.sqrt(num_batches-1)
 
 
