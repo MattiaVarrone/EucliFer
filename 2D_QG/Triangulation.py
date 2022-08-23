@@ -1,4 +1,5 @@
 import numpy as np
+import scipy
 from Graph_utils import *
 
 rng = np.random.default_rng()
@@ -16,9 +17,10 @@ sigma_const = 1
 # spinor field params
 psi_const = 1
 psi_range = 0.7
-gamma0 = [[1, 0], [0, -1]]
-gamma1 = [[0, 1], [1, 0]]
-gamma = [gamma0, gamma1]
+A_range = 1
+gamma0 = np.array([[1, 0], [0, -1]])     ### are these gamma matrices in euclidean space?
+gamma1 = np.array([[0, 1], [1, 0]])
+eps = np.array([[0, -1], [1, 0]])
 
 
 def S_phi(adj, phi, c):
@@ -29,18 +31,27 @@ def S_phi(adj, phi, c):
     return S
 
 
-def U(adj, A, c):           ### check how to calculate parallel transporter
-    U = np.exp(A[c])
+def U(A_i):           ### check how to calculate parallel transporter
+    U = scipy.linalg.expm(A_i*eps)    ###complex exponential?
     return U
 
 
-def S_psi(adj, psi, A, c):
-    S = 0
-    for i in range(3):
-        adj_c = adj[3 * c + i] // 3
-        S += psi_const * (np.matmul(U[c], psi[c]) - psi[adj_c]) ** 2   ### check how to calculate parallel transporter
+def S_psi(adj, psi, c, A):
 
-    S = 0
+    d_psi_x, d_psi_y = 0, 0
+    for i in range(3):
+
+        j = 3 * c + i
+        theta = 2*i*np.pi/3
+        adj_c = adj[j] // 3
+
+        d_psi = (np.matmul(U(A[j]), psi[adj_c]) - psi[c])    ### check how to calculate parallel transporter
+        d_psi_x += d_psi*np.cos(theta)
+        d_psi_y += d_psi*np.sin(theta)
+
+    D_psi = np.matmul(gamma0, d_psi_x) + np.matmul(gamma1, d_psi_y)
+    psi_bar = np.conj(np.matmul(gamma0, psi[c]))               ### check how to calc psi_bar
+    S = psi_const * np.abs(np.matmul(psi_bar, D_psi))          ### why is the action complex?
     return S
 
 
@@ -52,14 +63,19 @@ def S_sigma(adj, sigma, c):
     return S
 
 
-def update_field(i, adj, field, field_range, S, b, is_spinor=False):
+def update_field(i, adj, field, field_range, S, b, is_complex=False, gauge=None):
     c = i // 3
     field_new = np.copy(field)
     field_real = np.random.normal(size=field[0].shape)
-    field_imaginary = np.random.normal(size=field[0].shape)*1j if is_spinor else 0
+    field_imaginary = np.random.normal(size=field[0].shape)*1j if is_complex else 0
     field_new[c] += field_range * (field_real + field_imaginary)
-    S_old = S(adj, field, c)
-    S_new = S(adj, field_new, c)
+    if gauge is not None:
+        S_old = S(adj, field, c, gauge)
+        S_new = S(adj, field_new, c, gauge)
+    else:
+        S_old = S(adj, field, c)
+        S_new = S(adj, field_new, c)
+
     p = np.exp(-b * (S_new - S_old))
 
     if p > np.random.rand():
@@ -75,7 +91,7 @@ class Manifold:
         self.adj = fan_triangulation(N)
         self.vert_n, self.vert = vertex_list(self.adj)
         self.psi = np.zeros((N, 2), dtype=np.complex_)
-        self.A = np.zeros((N, 2, 2, 2), dtype=np.complex_)
+        self.A = np.zeros(3*N)
 
         self.phi = np.zeros(N)
         self.sigma = np.ones(N)
@@ -88,8 +104,9 @@ class Manifold:
             random_side = rng.integers(0, len(self.adj))
             self.phi = update_field(random_side, self.adj, self.phi, phi_range, S_phi, b)
         if 'spinor' in strategy:
-            random_side = rng.integers(0, len(self.adj))
-            self.psi = update_field(random_side, self.adj, self.psi, psi_range, S_psi, b, is_spinor=True)
+            random_side = rng.integers(0, len(self.adj), size=2)
+            self.psi = update_field(random_side[0], self.adj, self.psi, psi_range, S_psi, b, is_complex=True, gauge=self.A)
+            ###self.A = update_field(random_side[1], self.adj, self.A, A_range, S_psi, b, gauge=self.A)    ###figure out how make action change for gauge
         if 'ising' in strategy:
             random_side = rng.integers(0, len(self.adj))
             self.vary_sigma(random_side, b)
@@ -117,6 +134,8 @@ class Manifold:
         adj_new[m] = k
         adj_new[j] = l
         adj_new[l] = j
+        ### do same thing with connection, keep it attached to edges?
+
 
         c1 = i // 3
         c2 = k // 3
