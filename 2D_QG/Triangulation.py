@@ -154,7 +154,6 @@ class Manifold:
         if fast:
             dS = 0
         else:
-            """
             # gauge links corresponding to adjacent sides must be opposites
             A_new[i] = -self.A[n]
             A_new[k] = -self.A[m]
@@ -177,14 +176,6 @@ class Manifold:
             dS_phi = S_new_phi - S_old_phi
             dS_sigma = S_new_sigma - S_old_sigma
             dS = dS_psi + dS_phi + dS_sigma
-            """
-            c1 = i // 3
-            c2 = k // 3
-
-            # calculate action variation
-            S_old_psi = S_psi(self.adj, self.psi, c1, self.A) + S_psi(self.adj, self.psi, c2, self.A)
-            S_new_psi = S_psi(adj_new, self.psi, c1, A_new) + S_psi(adj_new, self.psi, c2, A_new)
-            dS = 0
 
         p = np.exp(-b * dS)
         if p > np.random.rand():
