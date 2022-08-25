@@ -2,7 +2,7 @@ from Triangulation import *
 from Plots import *
 
 N = 50
-iter = 20
+iter = 100
 
 beta = 0.5
 

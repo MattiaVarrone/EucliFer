@@ -18,9 +18,10 @@ sigma_const = 1
 psi_const = 1
 psi_range = 0.7
 A_range = 1
-gamma0 = np.array([[1, 0], [0, -1]])  ### are these gamma matrices in euclidean space?
-gamma1 = np.array([[0, 1], [1, 0]])
-eps = np.array([[0, -1], [1, 0]])
+gamma0 = np.array([[0, 1j], [1j, 0]])
+gamma1 = np.array([[0, 1], [-1, 0]])  ### are these the correct gamma matrices in euclidean space?
+
+eps = np.array([[0, 1], [-1, 0]])
 
 
 def S_phi(adj, phi, c):
@@ -31,25 +32,46 @@ def S_phi(adj, phi, c):
     return S
 
 
-def U(A_i):  ### check how to calculate parallel transporter
-    U = scipy.linalg.expm(A_i * eps)  ###complex exponential?
+def paral_trans(A_i):  ### check how to calculate parallel transporter
+    U = np.cos(A_i)*np.identity(2) + np.sin(A_i)*eps
     return U
 
 
-def S_psi(adj, psi, c, A):
+def S_psi_slow(adj, psi, c, A):
     d_psi_x, d_psi_y = 0, 0
     for i in range(3):
         j = 3 * c + i
         theta = 2 * i * np.pi / 3
         adj_c = adj[j] // 3
 
-        d_psi = (np.matmul(U(A[j]), psi[adj_c]) - psi[c])  ### check how to calculate parallel transporter
+        d_psi = (np.matmul(paral_trans(A[j]), psi[adj_c]) - psi[c])  ### check how to calculate parallel transporter
         d_psi_x += d_psi * np.cos(theta)
         d_psi_y += d_psi * np.sin(theta)
 
     D_psi = np.matmul(gamma0, d_psi_x) + np.matmul(gamma1, d_psi_y)
     psi_bar = np.conj(np.matmul(gamma0, psi[c]))  ### check how to calc psi_bar
     S = psi_const * np.abs(np.matmul(psi_bar, D_psi))  ### why is the action complex?
+    return S
+
+
+def S_psi(adj, psi, c, A):
+    d_psi_x, d_psi_y = 0, 0
+
+    for i in range(3):
+        j = 3 * c + i
+        theta = 2 * i * np.pi / 3
+        adj_c = adj[j] // 3
+
+        U = paral_trans(A[j])
+        d_psi_0 = U[0, 0] * psi[adj_c, 0] + U[0, 1] * psi[adj_c, 1] - psi[c, 0]
+        d_psi_1 = U[0, 0] * psi[adj_c, 1] + U[1, 1] * psi[adj_c, 1] - psi[c, 1]
+        d_psi = np.array([d_psi_0, d_psi_1])
+        d_psi_x += d_psi * np.cos(theta)
+        d_psi_y += d_psi * np.sin(theta)
+
+    D_psi = d_psi_x + d_psi_y#np.matmul(gamma0, d_psi_x) + np.matmul(gamma1, d_psi_y)
+    psi_bar = np.conj(psi[c]) #np.conj(np.matmul(gamma0, psi[c]))  ### check how to calc psi_bar
+    S = np.imag(np.sum(psi_bar*D_psi))  #- psi_const * np.imag(np.matmul(psi_bar, D_psi))  ### why is the action complex?
     return S
 
 
@@ -94,7 +116,8 @@ def update_gauge(i, adj, gauge, gauge_range, action, beta, matt_field):
 
     p = np.exp(-beta * (S_new - S_old))
     if p > np.random.rand():
-        gauge = gauge_new
+        gauge[i] = gauge_new[i]
+        gauge[adj[i]] = -gauge_new[i]
     return gauge
 
 
