@@ -50,7 +50,7 @@ def S_psi_slow(adj, psi, c, A):
 
     D_psi = np.matmul(gamma0, d_psi_x) + np.matmul(gamma1, d_psi_y)
     psi_bar = np.conj(np.matmul(gamma0, psi[c]))  ### check how to calc psi_bar
-    S = psi_const * np.abs(np.matmul(psi_bar, D_psi))  ### why is the action complex?
+    S = - psi_const * np.imag(np.matmul(psi_bar, D_psi))  ### why is the action complex?
     return S
 
 
@@ -69,14 +69,10 @@ def S_psi(adj, psi, c, A):
         d_psi_x += d_psi * np.cos(theta)
         d_psi_y += d_psi * np.sin(theta)
 
-    D_psi = d_psi_x + d_psi_y#np.matmul(gamma0, d_psi_x) + np.matmul(gamma1, d_psi_y)
-    psi_bar = np.conj(psi[c]) #np.conj(np.matmul(gamma0, psi[c]))  ### check how to calc psi_bar
-    S = np.imag(np.sum(psi_bar*D_psi))  #- psi_const * np.imag(np.matmul(psi_bar, D_psi))  ### why is the action complex?
+    D_psi = np.matmul(gamma0, d_psi_x) + np.matmul(gamma1, d_psi_y)  ### replace matmul with explicit components
+    psi_bar = np.conj(np.matmul(gamma0, psi[c]))  ### check how to calc psi_bar
+    S = - psi_const * np.imag(np.matmul(psi_bar, D_psi))
     return S
-
-
-def S_A(adj, A, i, psi):
-    return S_psi(adj, psi, i // 3, A)
 
 
 def S_sigma(adj, sigma, c):
