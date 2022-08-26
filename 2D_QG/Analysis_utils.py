@@ -40,7 +40,7 @@ def batch_estimate(data,observable,num_batches):
     return np.mean(values), np.std(values)/np.sqrt(num_batches-1)
 
 
-def make_profiles(beta, sizes, strategy=['gravity', 'ising'], eq_sweeps=eq_sweeps, meas_sweeps=meas_sweeps, n_measurements=n_measurements):
+def make_profiles(beta, sizes, strategy, eq_sweeps=eq_sweeps, meas_sweeps=meas_sweeps, n_measurements=n_measurements):
     mean_profiles = []
     for size in sizes:
         m = Manifold(size)

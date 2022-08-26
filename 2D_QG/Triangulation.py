@@ -18,9 +18,11 @@ sigma_const = 1
 psi_const = 1
 psi_range = 0.7
 A_range = 1
-gamma0 = np.array([[0, 1j], [1j, 0]])
-gamma1 = np.array([[0, 1], [-1, 0]])  ### are these the correct gamma matrices in euclidean space?
+                                        ### figure out what this is in 2d euclidean space
+gamma1 = np.array([[0, 1], [1, 0]])     ### refer to Zuber
+gamma2 = np.array([[0, -1j], [1j, 0]])  ### are these the correct gamma matrices in euclidean space?
 
+id = np.identity(2)
 eps = np.array([[0, 1], [-1, 0]])
 
 
@@ -33,25 +35,8 @@ def S_phi(adj, phi, c):
 
 
 def paral_trans(A_i):  ### check how to calculate parallel transporter
-    U = np.cos(A_i)*np.identity(2) + np.sin(A_i)*eps
+    U = np.cos(A_i)*id + np.sin(A_i)*eps
     return U
-
-
-def S_psi_slow(adj, psi, c, A):
-    d_psi_x, d_psi_y = 0, 0
-    for i in range(3):
-        j = 3 * c + i
-        theta = 2 * i * np.pi / 3
-        adj_c = adj[j] // 3
-
-        d_psi = (np.matmul(paral_trans(A[j]), psi[adj_c]) - psi[c])  ### check how to calculate parallel transporter
-        d_psi_x += d_psi * np.cos(theta)
-        d_psi_y += d_psi * np.sin(theta)
-
-    D_psi = np.matmul(gamma0, d_psi_x) + np.matmul(gamma1, d_psi_y)
-    psi_bar = np.conj(np.matmul(gamma0, psi[c]))  ### check how to calc psi_bar
-    S = - psi_const * np.imag(np.matmul(psi_bar, D_psi))  ### why is the action complex?
-    return S
 
 
 def S_psi(adj, psi, c, A):
@@ -62,17 +47,15 @@ def S_psi(adj, psi, c, A):
         theta = 2 * i * np.pi / 3
         adj_c = adj[j] // 3
 
-        U = paral_trans(A[j])
-        d_psi_0 = U[0, 0] * psi[adj_c, 0] + U[0, 1] * psi[adj_c, 1] - psi[c, 0]
-        d_psi_1 = U[0, 0] * psi[adj_c, 1] + U[1, 1] * psi[adj_c, 1] - psi[c, 1]
-        d_psi = np.array([d_psi_0, d_psi_1])
+        # we need parallel transport to take derivatives
+        d_psi = (np.matmul(paral_trans(A[j]), psi[adj_c]) - psi[c])  ### check how to calculate parallel transporter
         d_psi_x += d_psi * np.cos(theta)
         d_psi_y += d_psi * np.sin(theta)
 
-    D_psi = np.matmul(gamma0, d_psi_x) + np.matmul(gamma1, d_psi_y)  ### replace matmul with explicit components
-    psi_bar = np.conj(np.matmul(gamma0, psi[c]))  ### check how to calc psi_bar
-    S = - psi_const * np.imag(np.matmul(psi_bar, D_psi))
-    return S
+    D_psi = np.matmul(id + gamma1, d_psi_x)/2 + np.matmul(id + gamma2, d_psi_y)/2
+    psi_bar = np.conj(np.matmul(gamma1, psi[c]))             ### check how to calc psi_bar
+    S = - psi_const * np.imag(np.matmul(psi_bar, D_psi))     ### check how to obtain real action: take imag() or use hermit conjugate
+    return S   ###check action calculation thoroughly
 
 
 def S_sigma(adj, sigma, c):
@@ -129,10 +112,10 @@ class Manifold:
         self.phi = np.zeros(N)
         self.sigma = np.ones(N)
 
-    def random_flip(self, b, strategy, fast=False):
+    def random_flip(self, b, strategy, gravity_only=False):
         if 'gravity' in strategy:
             random_side = rng.integers(0, len(self.adj))
-            self.flip(random_side, b, fast=fast)
+            self.flip_edge(random_side, b, gravity_only=gravity_only)
         if 'scalar' in strategy:
             random_centre = rng.integers(0, self.N)
             self.phi = update_field(random_centre, self.adj, self.phi, phi_range, action=S_phi, beta=b)
@@ -145,12 +128,12 @@ class Manifold:
             random_side = rng.integers(0, len(self.adj))
             self.vary_sigma(random_side, b)
 
-    def sweep(self, n_sweeps, beta, strategy, fast=False):
+    def sweep(self, n_sweeps, beta, strategy, gravity_only=False):
         n = n_sweeps * 3 * self.N
         for _ in range(n):
-            self.random_flip(beta, strategy, fast=fast)
+            self.random_flip(beta, strategy, gravity_only=gravity_only)
 
-    def flip(self, i, b, fast=False):
+    def flip_edge(self, i, b, gravity_only=False):
         if self.adj[i] == next_(i) or self.adj[i] == prev_(i):
             return False
         # flipping an edge that is adjacent to the same triangle on both sides makes no sense
@@ -170,7 +153,7 @@ class Manifold:
         adj_new[j] = l
         adj_new[l] = j
 
-        if fast:
+        if gravity_only:
             dS = 0
         else:
             # gauge links corresponding to adjacent sides must be opposites
