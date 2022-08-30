@@ -1,15 +1,22 @@
-import unittest
 import sys
+import unittest
 
-sys.path.append("../2D_QG")
-from a2D_QG.Triangulation import *
+sys.path.append("../")
+from manifold_sampler.Triangulation import Manifold
+
+strategy = ['gravity', 'spinor']
+beta = 0.5
 
 
 class TestGauge(unittest.TestCase):
 
-
-    def test_adjecent(self, n=100):
-        self.assertEqual(6, 6, "should be 6")
+    def test_adjacent(self):
+        N = 50
+        n_sweeps = 20
+        m = Manifold(N)
+        m.sweep(n_sweeps, beta, strategy)
+        for i in range(len(m.adj)):
+            self.assertEqual(m.A[i], -m.A[m.adj[i]])
 
 
 if __name__ == '__main__':
