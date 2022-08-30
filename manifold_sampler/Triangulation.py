@@ -87,7 +87,8 @@ def update_field(i, adj, field, field_range, action, beta, is_complex=False, add
 def update_gauge(i, adj, gauge, gauge_range, action, beta, matt_field):
     gauge_new = np.copy(gauge)
     gauge_diff = np.random.normal(size=gauge[0].shape)
-    gauge_new[i] += gauge_range * gauge_diff
+    gauge_new[i] += gauge_range * gauge_diff            # proposed update
+    gauge_new[adj[i]] = -gauge_new[i]                   # adjacent link must be updated as well
 
     c = i//3
     S_old = action(adj, matt_field, c, gauge)
@@ -95,8 +96,7 @@ def update_gauge(i, adj, gauge, gauge_range, action, beta, matt_field):
 
     p = np.exp(-beta * (S_new - S_old))
     if p > np.random.rand():
-        gauge[i] = gauge_new[i]
-        gauge[adj[i]] = -gauge_new[i]
+        gauge = gauge_new
     return gauge
 
 
@@ -160,7 +160,7 @@ class Manifold:
             A_new[i] = -self.A[n]
             A_new[k] = -self.A[m]
             A_new[l] = -self.A[i]
-            A_new[j] = -self.A[l]
+            A_new[j] = -A_new[l]
 
             # centres of triangles involved
             c1 = i // 3
