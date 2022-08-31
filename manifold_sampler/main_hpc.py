@@ -1,23 +1,22 @@
-from Triangulation import *
 from Analysis_utils import *
 from scipy.interpolate import CubicSpline
 
+sizes = [(int(i) // 2) * 2 for i in np.geomspace(40, 200, 5)]
+beta = 0.5
+strategy = ['gravity', 'ising']
+eq_sweeps, meas_sweeps, n_measurements = 200, 4, 200
 
-beta=1
-sizes = [(int(i)//2)*2 for i in np.geomspace(10, 20, 2)]
 
-prof = make_profiles(beta, sizes, meas_sweeps=2, strategy=['gravity', 'spinor'])
-
+def profile_maker(size):
+    return make_profile(size, beta, strategy, eq_sweeps, meas_sweeps, n_measurements)
+prof = make_profiles_mp(sizes, profile_maker)
 
 prof_0 = prof[..., 0]
 rs0 = np.arange
-rs = np.arange(0.1, 10, 0.05)
+rs = np.arange(0.5, 10, 0.05)
 fit_prof = []
 
-
-fig, ax = plt.subplots(1,2)
-
-
+fig, ax = plt.subplots(1, 2)
 
 for profile in prof_0:
     dist_range = range(len(profile))
@@ -40,19 +39,21 @@ np.savez('data/profiles_spinor_1', full_prof=prof, fit_prof=np.array(fit_prof), 
 
 fit = curve_fit(lin_fit, x, y, p0=[0.75, 0])
 (d, a), err = fit
-ax[1].plot(x, a*x**d)
-d_H = 1/(1-d)
-d_err = np.sqrt(err[0,0])
-d_H_err = d_H**2*d_err
-a_err = np.sqrt(err[1,1])
+ax[1].plot(x, lin_fit(x, d, a))
+d_H = 1 / (1 - d)
+d_err = np.sqrt(err[0, 0])
+d_H_err = d_H ** 2 * d_err
+a_err = np.sqrt(err[1, 1])
 
 print("\nwith spline fit:")
-print(f'{d_H = }' +'+/-'+ f'{d_H_err = }')
-print(f'{a = }'+'+/-'+ f'{a_err = }')
+print(f'{d_H = }' + '+/-' + f'{d_H_err = }')
+print(f'{a = }' + '+/-' + f'{a_err = }')
 
 d_H, d_H_err, a, a_err = finite_size_scaling(prof, sizes)
+ax[1].plot(x, lin_fit(x, 1-1/d_H, a))
 print("\nwithout spline fit:")
-print(f'{d_H = }' +'+/-'+ f'{d_H_err = }')
-print(f'{a = }'+'+/-'+ f'{a_err = }')
+print(f'{d_H = }' + '+/-' + f'{d_H_err = }')
+print(f'{a = }' + '+/-' + f'{a_err = }')
 
 plt.savefig("pics/dist.png")
+plt.show()

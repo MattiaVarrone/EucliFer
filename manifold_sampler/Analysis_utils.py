@@ -1,6 +1,8 @@
 from Triangulation import *
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
+from timebudget import timebudget
+import multiprocessing as mp
 
 eq_sweeps = 200
 meas_sweeps = 2
@@ -40,17 +42,31 @@ def batch_estimate(data,observable,num_batches):
     return np.mean(values), np.std(values)/np.sqrt(num_batches-1)
 
 
-def make_profiles(beta, sizes, strategy, eq_sweeps=eq_sweeps, meas_sweeps=meas_sweeps, n_measurements=n_measurements):
+def make_profile(size, beta, strategy, eq_sweeps, meas_sweeps, n_measurements):
+    m = Manifold(size)
+    m.sweep(eq_sweeps, beta=beta, strategy=strategy)
+    profiles = []
+    for _ in range(n_measurements):
+        m.sweep(meas_sweeps, beta=beta, strategy=strategy)
+        profiles.append(dist_prof(m.adj, 15))
+    print(size)
+    return [batch_estimate(data, np.mean, 20) for data in np.transpose(profiles)]
+
+
+# creates an array of mean profiles for different lattice sizes
+@timebudget
+def make_profiles(sizes, beta, strategy, eq_sweeps=eq_sweeps, meas_sweeps=meas_sweeps, n_measurements=n_measurements):
     mean_profiles = []
     for size in sizes:
-        m = Manifold(size)
-        m.sweep(eq_sweeps, beta=beta, strategy=strategy)
-        profiles = []
-        for _ in range(n_measurements):
-            m.sweep(meas_sweeps, beta=beta, strategy=strategy)
-            profiles.append(dist_prof(m.adj, 15))
-        mean_profiles.append([batch_estimate(data, np.mean, 20) for data in np.transpose(profiles)])
-        print(size)
+        mean_profiles.append(make_profile(size, beta, strategy, eq_sweeps, meas_sweeps, n_measurements))
+    return np.array(mean_profiles)
+
+
+# the process of creating and updating different lattices is parallelised.
+@timebudget
+def make_profiles_mp(sizes, profile_maker):
+    pool = mp.Pool(mp.cpu_count())
+    mean_profiles = pool.map(profile_maker, sizes)
     return np.array(mean_profiles)
 
 
@@ -61,7 +77,6 @@ def scale_profile(profiles, sizes, d):
         x = rvals / sizes[i] ** d
         y = profile / sizes[i] ** (1 - d)
         xs.append(x), ys.append(y)
-        # plt.plot(x, y)
     return np.array(xs), np.array(ys)
 
 

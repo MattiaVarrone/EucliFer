@@ -1,5 +1,3 @@
-import numpy as np
-import scipy
 from Graph_utils import *
 
 rng = np.random.default_rng()
@@ -55,7 +53,7 @@ def S_psi(adj, psi, c, A):
     D_psi = np.matmul(id + gamma1, d_psi_x)/2 + np.matmul(id + gamma2, d_psi_y)/2
     psi_bar = np.conj(np.matmul(gamma1, psi[c]))             ### check how to calc psi_bar
     S = - psi_const * np.imag(np.matmul(psi_bar, D_psi))     ### check how to obtain real action: take imag() or use hermit conjugate
-    return S   ###check action calculation thoroughly
+    return S   ###check action calculation thoroughly        ### check why psi tends to diverge
 
 
 def S_sigma(adj, sigma, c):
@@ -112,10 +110,10 @@ class Manifold:
         self.phi = np.zeros(N)
         self.sigma = np.ones(N)
 
-    def random_flip(self, b, strategy, gravity_only=False):
+    def random_flip(self, b, strategy):
         if 'gravity' in strategy:
             random_side = rng.integers(0, len(self.adj))
-            self.flip_edge(random_side, b, gravity_only=gravity_only)
+            self.flip_edge(random_side, b, strategy=strategy)
         if 'scalar' in strategy:
             random_centre = rng.integers(0, self.N)
             self.phi = update_field(random_centre, self.adj, self.phi, phi_range, action=S_phi, beta=b)
@@ -128,12 +126,12 @@ class Manifold:
             random_side = rng.integers(0, len(self.adj))
             self.vary_sigma(random_side, b)
 
-    def sweep(self, n_sweeps, beta, strategy, gravity_only=False):
+    def sweep(self, n_sweeps, beta, strategy):
         n = n_sweeps * 3 * self.N
         for _ in range(n):
-            self.random_flip(beta, strategy, gravity_only=gravity_only)
+            self.random_flip(beta, strategy)
 
-    def flip_edge(self, i, b, gravity_only=False):
+    def flip_edge(self, i, b, strategy):
         if self.adj[i] == next_(i) or self.adj[i] == prev_(i):
             return False
         # flipping an edge that is adjacent to the same triangle on both sides makes no sense
@@ -153,31 +151,31 @@ class Manifold:
         adj_new[j] = l
         adj_new[l] = j
 
-        if gravity_only:
-            dS = 0
-        else:
+        # Action variation due to gravity is 0
+        dS = 0
+
+        # centres of triangles involved
+        c1 = i // 3
+        c2 = k // 3
+
+        if 'scalar' in strategy:
+            S_old = S_phi(self.adj, self.phi, c1) + S_phi(self.adj, self.phi, c2)
+            S_new = S_phi(adj_new, self.phi, c1) + S_phi(adj_new, self.phi, c2)
+            dS += S_new - S_old
+        if 'spinor' in strategy:
             # gauge links corresponding to adjacent sides must be opposites
             A_new[i] = -self.A[n]
             A_new[k] = -self.A[m]
             A_new[l] = -self.A[i]
             A_new[j] = -A_new[l]
 
-            # centres of triangles involved
-            c1 = i // 3
-            c2 = k // 3
-
-            # calculate action variation
-            S_old_psi = S_psi(self.adj, self.psi, c1, self.A) + S_psi(self.adj, self.psi, c2, self.A)
-            S_new_psi = S_psi(adj_new, self.psi, c1, A_new) + S_psi(adj_new, self.psi, c2, A_new)
-            S_old_phi = S_phi(self.adj, self.phi, c1) + S_phi(self.adj, self.phi, c2)
-            S_new_phi = S_phi(adj_new, self.phi, c1) + S_phi(adj_new, self.phi, c2)
-            S_old_sigma = S_sigma(self.adj, self.sigma, c1) + S_sigma(self.adj, self.sigma, c2)
-            S_new_sigma = S_sigma(adj_new, self.sigma, c1) + S_sigma(adj_new, self.sigma, c2)
-
-            dS_psi = S_new_psi - S_old_psi
-            dS_phi = S_new_phi - S_old_phi
-            dS_sigma = S_new_sigma - S_old_sigma
-            dS = dS_psi + dS_phi + dS_sigma
+            S_old = S_psi(self.adj, self.psi, c1, self.A) + S_psi(self.adj, self.psi, c2, self.A)
+            S_new = S_psi(adj_new, self.psi, c1, A_new) + S_psi(adj_new, self.psi, c2, A_new)
+            dS += S_new - S_old
+        if 'ising' in strategy:
+            S_old = S_sigma(self.adj, self.sigma, c1) + S_sigma(self.adj, self.sigma, c2)
+            S_new = S_sigma(adj_new, self.sigma, c1) + S_sigma(adj_new, self.sigma, c2)
+            dS += S_new - S_old
 
         p = np.exp(-b * dS)
         if p > np.random.rand():
