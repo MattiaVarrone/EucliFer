@@ -34,8 +34,3 @@ def plot_triangulation_3d(adj):
     ax.set_ylim3d(np.amin(pos[:, 1]), np.amax(pos[:, 1]))
     ax.set_zlim3d(np.amin(pos[:, 2]), np.amax(pos[:, 2]))
     plt.show()
-
-def plot_triangulation_2d(adj):
-    num_vert, vertex = vertex_list(adj)
-    edges = triangulation_edges(adj, vertex)
-    triangles = triangulation_triangles(adj, vertex)

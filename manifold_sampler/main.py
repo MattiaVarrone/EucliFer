@@ -1,5 +1,5 @@
 from Triangulation import *
-from Plots import *
+from plot_3D import *
 from Analysis_utils import *
 
 N = 12
