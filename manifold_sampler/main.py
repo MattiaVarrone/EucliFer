@@ -9,7 +9,7 @@ beta = 0.5
 
 l = Manifold(N)
 
-l.sweep(iter, beta=beta, strategy=[ 'gravity', 'spinor'])
+l.sweep(iter, beta=beta, strategy=['gravity', 'spinor'])
 
 print(l.psi)
 print(l.A)

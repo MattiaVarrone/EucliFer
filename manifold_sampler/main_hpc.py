@@ -1,7 +1,8 @@
+import os
 from Analysis_utils import *
 from scipy.interpolate import CubicSpline
 
-sizes = [(int(i) // 2) * 2 for i in np.geomspace(30, 120, 4)]
+sizes = [(int(i) // 2) * 2 for i in np.geomspace(30, 70, 4)]
 beta = 0.5
 matter = 'ising'
 strategy = ['gravity', matter]
@@ -11,6 +12,9 @@ eq_sweeps, meas_sweeps, n_measurements = 200, 4, 200
 def profile_maker(size):
     return make_profile(size, beta, strategy, eq_sweeps, meas_sweeps, n_measurements)
 
+
+array_id = os.getenv('SLURM_ARRAY_TASK_ID')
+print(array_id)
 
 prof = make_profiles_mp(sizes, profile_maker)
 
@@ -59,5 +63,6 @@ print("\nwithout spline fit:")
 print(f'{d_H = }' + '+/-' + f'{d_H_err = }')
 print(f'{a = }' + '+/-' + f'{a_err = }')
 
-plt.savefig("data/pics/dist_" + matter + ".png")
+ID = "" if array_id is None else str(array_id)
+plt.savefig("data/pics/dist_" + matter + "_" + ID + ".png")
 plt.show()

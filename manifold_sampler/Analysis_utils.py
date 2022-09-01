@@ -10,9 +10,9 @@ n_measurements = 200
 
 
 def dist_prof(adj,max_distance=30):
-    '''Return array `profile` of size `max_distance` such that `profile[r]` is␣
+    """Return array `profile` of size `max_distance` such that `profile[r]` is␣
     ↪the number
-    of vertices that have distance r to a randomly chosen initial vertex.'''
+    of vertices that have distance r to a randomly chosen initial vertex."""
     profile = np.zeros((max_distance),dtype=np.int32)
     neighbors = vertex_neighbors_list(adj)
     num_vertices = len(neighbors)
@@ -94,7 +94,6 @@ def plot_profiles(mean_profiles, sizes):
 def overlay_profiles(profiles, ranges, sizes):
     for profile, range in zip(profiles, ranges):
         plt.plot(range, [y[0] for y in profile])
-        # plt.fill_between(range, range(len(profile)), [y[0]-y[1] for y in profile], [y[0]+y[1] for y in profile], alpha=0.2)
     plt.legend(sizes, title="N")
     plt.xlabel("r")
     plt.ylabel(r"$\mathbb{E}[\rho_T(r)]$")
