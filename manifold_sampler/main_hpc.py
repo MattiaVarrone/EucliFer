@@ -1,14 +1,17 @@
 from Analysis_utils import *
 from scipy.interpolate import CubicSpline
 
-sizes = [(int(i) // 2) * 2 for i in np.geomspace(40, 200, 5)]
+sizes = [(int(i) // 2) * 2 for i in np.geomspace(30, 120, 4)]
 beta = 0.5
-strategy = ['gravity', 'ising']
+matter = 'ising'
+strategy = ['gravity', matter]
 eq_sweeps, meas_sweeps, n_measurements = 200, 4, 200
 
 
 def profile_maker(size):
     return make_profile(size, beta, strategy, eq_sweeps, meas_sweeps, n_measurements)
+
+
 prof = make_profiles_mp(sizes, profile_maker)
 
 prof_0 = prof[..., 0]
@@ -36,7 +39,6 @@ ax[0].legend(["N = " + str(N) for N in sizes])
 
 np.savez('data/profiles_spinor_1', full_prof=prof, fit_prof=np.array(fit_prof), prof_0=prof_0, sizes=sizes, beta=beta)
 
-
 fit = curve_fit(lin_fit, x, y, p0=[0.75, 0])
 (d, a), err = fit
 ax[1].plot(x, lin_fit(x, d, a))
@@ -45,15 +47,17 @@ d_err = np.sqrt(err[0, 0])
 d_H_err = d_H ** 2 * d_err
 a_err = np.sqrt(err[1, 1])
 
+print('Number of cores: ' + str(mp.cpu_count()))
+
 print("\nwith spline fit:")
 print(f'{d_H = }' + '+/-' + f'{d_H_err = }')
 print(f'{a = }' + '+/-' + f'{a_err = }')
 
 d_H, d_H_err, a, a_err = finite_size_scaling(prof, sizes)
-ax[1].plot(x, lin_fit(x, 1-1/d_H, a))
+ax[1].plot(x, lin_fit(x, 1 - 1 / d_H, a))
 print("\nwithout spline fit:")
 print(f'{d_H = }' + '+/-' + f'{d_H_err = }')
 print(f'{a = }' + '+/-' + f'{a_err = }')
 
-plt.savefig("pics/dist.png")
+plt.savefig("data/pics/dist_" + matter + ".png")
 plt.show()

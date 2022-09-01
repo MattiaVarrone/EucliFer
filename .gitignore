@@ -11,3 +11,9 @@
 notebooks/example-analysis.nb
 
 **/play.ipynb
+
+**/DiracAction.nb
+
+**/parallel_vs_sequential.py
+
+notebooks
