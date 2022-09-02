@@ -3,9 +3,9 @@ from Analysis_utils import *
 from scipy.interpolate import CubicSpline
 
 # params for the lattice-matter system and sampling
-sizes = [(int(i) // 2) * 2 for i in np.geomspace(30, 300, 7)]
+sizes = [(int(i) // 2) * 2 for i in np.geomspace(30, 60, 4)]
 beta = 0.5
-matter = 'ising'
+matter = 'scalar'
 strategy = ['gravity', matter]
 eq_sweeps, meas_sweeps, n_measurements = 200, 4, 200
 

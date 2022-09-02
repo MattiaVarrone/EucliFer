@@ -16,8 +16,9 @@ sigma_const = 1
 psi_const = 1
 psi_range = 0.7
 A_range = 1
-                                        ### figure out what this is in 2d euclidean space
-gamma1 = np.array([[0, 1], [1, 0]])     ### refer to Zuber
+_mass = 0
+### figure out what this is in 2d euclidean space
+gamma1 = np.array([[0, 1], [1, 0]])  ### refer to Zuber
 gamma2 = np.array([[0, -1j], [1j, 0]])  ### are these the correct gamma matrices in euclidean space?
 
 id = np.identity(2)
@@ -33,7 +34,7 @@ def S_phi(adj, phi, c):
 
 
 def paral_trans(A_i):  ### check how to calculate parallel transporter
-    U = np.cos(A_i)*id + np.sin(A_i)*eps
+    U = np.cos(A_i) * id + np.sin(A_i) * eps
     return U
 
 
@@ -50,10 +51,14 @@ def S_psi(adj, psi, c, A):
         d_psi_x += d_psi * np.cos(theta)
         d_psi_y += d_psi * np.sin(theta)
 
-    D_psi = np.matmul(id + gamma1, d_psi_x)/2 + np.matmul(id + gamma2, d_psi_y)/2
-    psi_bar = np.conj(np.matmul(gamma1, psi[c]))             ### check how to calc psi_bar
-    S = - psi_const * np.imag(np.matmul(psi_bar, D_psi))     ### check how to obtain real action: take imag() or use hermit conjugate
-    return S   ###check action calculation thoroughly        ### check why psi tends to diverge
+    D_psi = np.matmul(id + gamma1, d_psi_x) / 2 + np.matmul(id + gamma2, d_psi_y) / 2
+    psi_bar = np.conj(np.matmul(gamma1, psi[c]))  ### check how to calc psi_bar
+    S = - psi_const * np.imag(np.matmul(psi_bar, D_psi)) + _mass * np.matmul(psi_bar, psi[c])
+    return S
+
+
+###check action calculation thoroughly     ### check why psi tends to diverge
+### check how to obtain real action: take imag() or use hermit conjugate
 
 
 def S_sigma(adj, sigma, c):
@@ -62,40 +67,6 @@ def S_sigma(adj, sigma, c):
         adj_c = adj[3 * c + i] // 3
         S += - sigma_const * sigma[c] * sigma[adj_c]
     return S
-
-
-def update_field(i, adj, field, field_range, action, beta, is_complex=False, add_field=None):
-    field_new = np.copy(field)
-    field_real = np.random.normal(size=field[0].shape)
-    field_imaginary = np.random.normal(size=field[0].shape) * 1j if is_complex else 0
-    field_new[i] += field_range * (field_real + field_imaginary)
-    if add_field is not None:
-        S_old = action(adj, field, i, add_field)
-        S_new = action(adj, field_new, i, add_field)
-    else:
-        S_old = action(adj, field, i)
-        S_new = action(adj, field_new, i)
-
-    p = np.exp(-beta * (S_new - S_old))
-    if p > np.random.rand():
-        field = field_new
-    return field
-
-
-def update_gauge(i, adj, gauge, gauge_range, action, beta, matt_field):
-    gauge_new = np.copy(gauge)
-    gauge_diff = np.random.normal(size=gauge[0].shape)
-    gauge_new[i] += gauge_range * gauge_diff            # proposed update
-    gauge_new[adj[i]] = -gauge_new[i]                   # adjacent link must be updated as well
-
-    c = i//3
-    S_old = action(adj, matt_field, c, gauge)
-    S_new = action(adj, matt_field, c, gauge_new)
-
-    p = np.exp(-beta * (S_new - S_old))
-    if p > np.random.rand():
-        gauge = gauge_new
-    return gauge
 
 
 class Manifold:
@@ -109,87 +80,125 @@ class Manifold:
         self.A = np.zeros(3 * N)
         self.phi = np.zeros(N)
         self.sigma = np.ones(N)
+        self.S = 0
 
-    def random_flip(self, b, strategy):
+    def random_update(self, beta, strategy):
         if 'gravity' in strategy:
             random_side = rng.integers(0, len(self.adj))
-            self.flip_edge(random_side, b, strategy=strategy)
+            self.flip_edge(random_side, beta, strategy=strategy)
         if 'scalar' in strategy:
             random_centre = rng.integers(0, self.N)
-            self.phi = update_field(random_centre, self.adj, self.phi, phi_range, action=S_phi, beta=b)
+            self.phi = self.update_field(random_centre, self.phi, phi_range, action=S_phi, beta=beta)
         if 'spinor' in strategy:
             random_centre, random_side = rng.integers(0, self.N), rng.integers(0, len(self.adj))
-            self.psi = update_field(random_centre, self.adj, self.psi, psi_range,
-                                    action=S_psi, beta=b, is_complex=True, add_field=self.A)
-            self.A = update_gauge(random_side, self.adj, self.A, A_range, action=S_psi, beta=b, matt_field=self.psi)
+            self.psi = self.update_field(random_centre, self.psi, psi_range,
+                                    action=S_psi, beta=beta, is_complex=True, add_field=self.A)
+            self.A = self.update_gauge(random_side, self.A, A_range, action=S_psi, beta=beta, matt_field=self.psi)
         if 'ising' in strategy:
-            random_side = rng.integers(0, len(self.adj))
-            self.vary_sigma(random_side, b)
+            random_centre = rng.integers(0, self.N)
+            self.update_spin(random_centre, beta)
 
     def sweep(self, n_sweeps, beta, strategy):
         n = n_sweeps * 3 * self.N
         for _ in range(n):
-            self.random_flip(beta, strategy)
+            self.random_update(beta, strategy)
 
-    def flip_edge(self, i, b, strategy):
-        if self.adj[i] == next_(i) or self.adj[i] == prev_(i):
-            return False
-        # flipping an edge that is adjacent to the same triangle on both sides makes no sense
+    def flip_edge(self, i, beta, strategy):
+        if self.adj[i] != next_(i) and self.adj[i] != prev_(i):
+            # flipping an edge that is adjacent to the same triangle on both sides makes no sense
 
-        adj_new = np.copy(self.adj)
-        A_new = np.copy(self.A)
+            adj_new = np.copy(self.adj)
+            A_new = np.copy(self.A)
 
-        j = prev_(i)
-        k = adj_new[i]
-        l = prev_(k)
-        n = adj_new[l]
-        adj_new[i] = n  # it is important that we first update
-        adj_new[n] = i  # these adjacencies, before determining m,
-        m = adj_new[j]  # to treat the case j == n appropriately
-        adj_new[k] = m
-        adj_new[m] = k
-        adj_new[j] = l
-        adj_new[l] = j
+            j = prev_(i)
+            k = adj_new[i]
+            l = prev_(k)
+            n = adj_new[l]
+            adj_new[i] = n  # it is important that we first update
+            adj_new[n] = i  # these adjacencies, before determining m,
+            m = adj_new[j]  # to treat the case j == n appropriately
+            adj_new[k] = m
+            adj_new[m] = k
+            adj_new[j] = l
+            adj_new[l] = j
 
-        # Action variation due to gravity is 0
-        dS = 0
+            # Action variation due to gravity is 0
+            dS = 0
 
-        # centres of triangles involved
-        c1 = i // 3
-        c2 = k // 3
+            # centres of triangles involved
+            c1 = i // 3
+            c2 = k // 3
 
-        if 'scalar' in strategy:
-            S_old = S_phi(self.adj, self.phi, c1) + S_phi(self.adj, self.phi, c2)
-            S_new = S_phi(adj_new, self.phi, c1) + S_phi(adj_new, self.phi, c2)
-            dS += S_new - S_old
-        if 'spinor' in strategy:
-            # gauge links corresponding to adjacent sides must be opposites
-            A_new[i] = -self.A[n]
-            A_new[k] = -self.A[m]
-            A_new[l] = -self.A[i]
-            A_new[j] = -A_new[l]
+            if 'scalar' in strategy:
+                S_old = S_phi(self.adj, self.phi, c1) + S_phi(self.adj, self.phi, c2)
+                S_new = S_phi(adj_new, self.phi, c1) + S_phi(adj_new, self.phi, c2)
+                dS += S_new - S_old
+            if 'spinor' in strategy:
+                # gauge links corresponding to adjacent sides must be opposites
+                A_new[i] = -self.A[n]
+                A_new[k] = -self.A[m]
+                A_new[l] = -self.A[i]
+                A_new[j] = -A_new[l]
 
-            S_old = S_psi(self.adj, self.psi, c1, self.A) + S_psi(self.adj, self.psi, c2, self.A)
-            S_new = S_psi(adj_new, self.psi, c1, A_new) + S_psi(adj_new, self.psi, c2, A_new)
-            dS += S_new - S_old
-        if 'ising' in strategy:
-            S_old = S_sigma(self.adj, self.sigma, c1) + S_sigma(self.adj, self.sigma, c2)
-            S_new = S_sigma(adj_new, self.sigma, c1) + S_sigma(adj_new, self.sigma, c2)
-            dS += S_new - S_old
+                S_old = S_psi(self.adj, self.psi, c1, self.A) + S_psi(self.adj, self.psi, c2, self.A)
+                S_new = S_psi(adj_new, self.psi, c1, A_new) + S_psi(adj_new, self.psi, c2, A_new)
+                dS += S_new - S_old
+            if 'ising' in strategy:
+                S_old = S_sigma(self.adj, self.sigma, c1) + S_sigma(self.adj, self.sigma, c2)
+                S_new = S_sigma(adj_new, self.sigma, c1) + S_sigma(adj_new, self.sigma, c2)
+                dS += S_new - S_old
 
-        p = np.exp(-b * dS)
+            p = np.exp(-beta * dS)
+            if p > np.random.rand():
+                self.adj = adj_new
+                self.A = A_new
+                self.S += dS
+
+    def update_field(self, i, field, field_range, action, beta, is_complex=False, add_field=None):
+        field_new = np.copy(field)
+        field_real = np.random.normal(size=field[0].shape)
+        field_imaginary = np.random.normal(size=field[0].shape) * 1j if is_complex else 0
+        field_new[i] += field_range * (field_real + field_imaginary)
+        if add_field is not None:
+            S_old = action(self.adj, field, i, add_field)
+            S_new = action(self.adj, field_new, i, add_field)
+        else:
+            S_old = action(self.adj, field, i)
+            S_new = action(self.adj, field_new, i)
+        dS = S_new - S_old
+
+        p = np.exp(-beta * dS)
         if p > np.random.rand():
-            self.adj = adj_new
-            self.A = A_new
-        return True
+            field = field_new
+            self.S += dS
+        return field
 
-    def vary_sigma(self, i, b):
+    def update_gauge(self, i, gauge, gauge_range, action, beta, matt_field):
+        gauge_new = np.copy(gauge)
+        gauge_diff = np.random.normal(size=gauge[0].shape)
+        gauge_new[i] += gauge_range * gauge_diff  # proposed update
+        gauge_new[self.adj[i]] = -gauge_new[i]  # adjacent link must be updated as well
+
         c = i // 3
+        S_old = action(self.adj, matt_field, c, gauge)
+        S_new = action(self.adj, matt_field, c, gauge_new)
+        dS = S_new - S_old
+
+        p = np.exp(-beta * dS)
+        if p > np.random.rand():
+            gauge = gauge_new
+            self.S += dS
+        return gauge
+
+    def update_spin(self, c, beta):
         sigma_new = np.copy(self.sigma)
         sigma_new[c] *= -1
         S_old = S_phi(self.adj, self.sigma, c)
         S_new = S_phi(self.adj, sigma_new, c)
-        p = np.exp(-b * (S_new - S_old))
+        dS = S_new - S_old
 
+        p = np.exp(-beta * dS)
         if p > np.random.rand():
             self.sigma = sigma_new
+
+
