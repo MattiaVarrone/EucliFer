@@ -14,9 +14,6 @@ array_id = os.getenv('SLURM_ARRAY_TASK_ID')
 if array_id is not None:
     array_id = int(array_id)
 
-# create plots
-fig, ax = plt.subplots(1, 2)
-
 
 # create a distance profile for different lattice sizes
 def profile_maker(size):
@@ -27,22 +24,22 @@ if array_id is not None and array_id <= 1:
 else:
     prof = make_profiles_mp(sizes, profile_maker)
 
+# create plots
+fig, ax = plt.subplots(1, 2)
+
 # fit a cubic spline through the distance profiles
 fit_prof = []
 prof_0 = prof[..., 0]  # neglect errors
 rs = np.arange(0.5, 10, 0.05)  # range for spline fit
 
 for profile in prof_0:
-    dist_range = range(len(profile))
+    dist_range = np.arange(len(profile))
     cs = CubicSpline(dist_range, profile)
     fit_prof.append(cs(rs))
 
-    # plot profiles
+    # plot distance profiles
     ax[0].plot(dist_range, profile, 'x')
     ax[0].plot(rs, cs(rs))
-
-ax[0].set_title('Distance Profiles'), ax[1].set_title('$Log(r_{max})\; vs\; Log(N)$')
-ax[0].legend(["N = " + str(N) for N in sizes])
 
 np.savez('data/profiles_spinor_1', full_prof=prof, fit_prof=np.array(fit_prof), prof_0=prof_0, sizes=sizes, beta=beta)
 
@@ -56,7 +53,23 @@ d_err = np.sqrt(err[0, 0])
 d_H_err = d_H ** 2 * d_err
 a_err = np.sqrt(err[1, 1])
 
-ax[1].plot(x, lin_fit(x, d, a))
+# make fit without spline
+d_H_ws, d_H_err_ws, a_ws, a_err_ws = finite_size_scaling(prof, sizes)
+
+
+##### plot settings #####
+ax[1].plot(x, lin_fit(x, d, a), 'g')
+ax[1].plot(x, lin_fit(x, 1 - 1 / d_H_ws, a_ws))
+ax[1].plot(x, y, 'gx')
+
+ax[0].set_title('Distance Profiles'), ax[1].set_title('$Log(r_{max})\; vs\; Log(N)$')
+ax[0].legend(["N = " + str(N) for N in sizes]), ax[1].legend(["Spline", "No spline"])
+
+ID = "" if array_id is None else str(array_id)
+fig.set_size_inches(8, 5)
+plt.savefig("data/pics/dist_" + matter + "_" + ID + ".png")
+plt.show()
+
 
 ##### results and infos #####
 print('Number of cores: ' + str(mp.cpu_count()))
@@ -66,12 +79,6 @@ print("\nwith spline fit:")
 print(f'{d_H = }' + '+/-' + f'{d_H_err = }')
 print(f'{a = }' + '+/-' + f'{a_err = }')
 
-d_H, d_H_err, a, a_err = finite_size_scaling(prof, sizes)
-ax[1].plot(x, lin_fit(x, 1 - 1 / d_H, a))
 print("\nwithout spline fit:")
-print(f'{d_H = }' + '+/-' + f'{d_H_err = }')
-print(f'{a = }' + '+/-' + f'{a_err = }')
-
-ID = "" if array_id is None else str(array_id)
-plt.savefig("data/pics/dist_" + matter + "_" + ID + ".png")
-plt.show()
+print(f'{d_H_ws = }' + '+/-' + f'{d_H_err_ws = }')
+print(f'{a_ws = }' + '+/-' + f'{a_err_ws = }')
