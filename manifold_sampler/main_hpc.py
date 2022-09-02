@@ -13,7 +13,6 @@ eq_sweeps, meas_sweeps, n_measurements = 200, 4, 200
 array_id = os.getenv('SLURM_ARRAY_TASK_ID')
 if array_id is not None:
     array_id = int(array_id)
-print(array_id)
 
 # create plots
 fig, ax = plt.subplots(1, 2)
@@ -61,6 +60,7 @@ ax[1].plot(x, lin_fit(x, d, a))
 
 ##### results and infos #####
 print('Number of cores: ' + str(mp.cpu_count()))
+print(f'{array_id = }')
 
 print("\nwith spline fit:")
 print(f'{d_H = }' + '+/-' + f'{d_H_err = }')
