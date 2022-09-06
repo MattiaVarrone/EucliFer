@@ -4,7 +4,7 @@ from Analysis_utils import *
 
 N = 32
 beta = 0.63
-strategy = ['gravity', 'spinor_free']
+strategy = ['gravity', 'spinor_inter']
 
 l = Manifold(N)
 

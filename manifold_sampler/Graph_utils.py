@@ -16,6 +16,16 @@ def fan_triangulation(n):
                     dtype=np.int32).flatten()
 
 
+def fan_sign(adj):
+    sign = np.ones(len(adj))
+    for i in range(len(adj)):
+        if i % 2 == 0 and adj[i] % 3 != 0:
+            sign[i] = -1
+        sign[0] = -1
+        sign[adj[0]] = -1
+    return sign
+
+
 def is_fpf_involution(adj):
     """Test whether adj defines a fixed-point free involution."""
     for x, a in enumerate(adj):

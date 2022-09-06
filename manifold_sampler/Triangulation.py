@@ -4,6 +4,24 @@ from Graph_utils import *
 rng = np.random.default_rng()
 
 
+def circle_vertex(adj, sign, i):
+    j = next_(adj[i])
+    alpha = theta[i % 3] - theta[adj[i] % 3] + np.pi
+    U = sign[i] * paral_trans(alpha / 2)
+    def_angle = 2 * np.pi - np.pi / 3
+
+    # clockwise circling of vertices
+    while j != i:
+        alpha = theta[j % 3] - theta[adj[j] % 3] + np.pi
+        U_1 = sign[j] * paral_trans(alpha / 2)
+        U = np.matmul(U, U_1)
+        def_angle -= np.pi / 3
+        j = next_(adj[j])
+
+    trace = np.trace(U) / 2
+    return trace, def_angle
+
+
 class Manifold:
     # Simplicial Manifold: created by piecing triangles together with the topology of a sphere
 
@@ -14,9 +32,9 @@ class Manifold:
         self.phi = np.zeros(N)
         self.sigma = np.ones(N)
 
-        self.psi = np.zeros((N, 2), dtype=np.complex_)
+        self.psi = np.zeros((N, 2), dtype=np.complex_)  ### should use majorana basis eventually
         self.A = np.zeros(3 * N)  # variable gauge link
-        self.sign = np.ones(3 * N)  # gauge link sign
+        self.sign = fan_sign(self.adj)  # gauge link sign
 
     def random_update(self, beta, strategy):
         if 'gravity' in strategy:
@@ -31,7 +49,7 @@ class Manifold:
         if 'spinor_free' in strategy:
             random_centre = rng.integers(0, self.N)
             self.psi = self.update_field(random_centre, self.psi, psi_range,
-                                         action=S_psi_free, beta=beta, is_complex=True, add_field=self.sign)
+                                         action=S_psi_free, beta=beta, is_complex=False, add_field=self.sign)
         if 'spinor_inter' in strategy:
             random_centre, random_side = rng.integers(0, self.N), rng.integers(0, len(self.adj))
             self.psi = self.update_field(random_centre, self.psi, psi_range,
@@ -79,8 +97,11 @@ class Manifold:
                 S_new = S_sigma(adj_new, self.sigma, c1) + S_sigma(adj_new, self.sigma, c2)
                 dS += S_new - S_old
             if 'spinor_free' in strategy:
-                # signs of parallel transporters need to be changed to ensure positive plaquette sign. (A drawing would be useful)
-
+                # signs of parallel transporters need to be changed to ensure positive plaquette sign.
+                for edge in (n, m, l):
+                    trace, def_angle = circle_vertex(adj_new, sign_new, edge)
+                    sign_new[edge] = np.sign(trace / np.cos(def_angle/2))
+                    sign_new[adj_new[edge]] = sign_new[edge]
 
                 S_old = S_psi_free(self.adj, self.psi, c1, self.sign) + S_psi_free(self.adj, self.psi, c2, self.sign)
                 S_new = S_psi_free(adj_new, self.psi, c1, sign_new) + S_psi_free(adj_new, self.psi, c2, sign_new)
@@ -100,6 +121,7 @@ class Manifold:
             if p > np.random.rand():
                 self.adj = adj_new
                 self.A = A_new
+                self.sign = sign_new
 
     def update_field(self, i, field, field_range, action, beta, is_complex=False, add_field=None):
         field_new = np.copy(field)

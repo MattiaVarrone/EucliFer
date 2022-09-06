@@ -1,7 +1,6 @@
 import sys
 import unittest
 
-import numpy as np
 import scipy
 
 sys.path.append("../")
@@ -40,6 +39,22 @@ class TestPsi(unittest.TestCase):
             product = np.matmul(psi_bar, psi)
             self.assertAlmostEqual(np.imag(product), 0)
 
-    ### test plaquette sign
+    def test_plaquette(self):
+        N = 16
+        m = Manifold(N)
+
+        # check if m.sign works in initial config
+        for i in range(len(m.adj)):
+            trace_plaquette, def_angle = circle_vertex(m.adj, m.sign, i)
+            self.assertAlmostEqual(trace_plaquette, np.cos(def_angle/2))
+
+        # m.sign works after evolution
+        m.sweep(10, 1, ['gravity', 'spinor_free'])
+        for i in range(len(m.adj)):
+            trace_plaquette, def_angle = circle_vertex(m.adj, m.sign, i)
+            print(np.cos(def_angle / 2))
+            self.assertAlmostEqual(trace_plaquette, np.cos(def_angle/2))
+
+
 if __name__ == '__main__':
     unittest.main()

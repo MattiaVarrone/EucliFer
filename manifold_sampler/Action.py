@@ -62,7 +62,7 @@ def S_psi_inter(adj, psi, c, A):
         d_psi_y += d_psi * np.sin(theta)
 
     D_psi = np.matmul(id + gamma1, d_psi_x) / 2 + np.matmul(id + gamma2, d_psi_y) / 2
-    psi_bar = np.conj(np.matmul(gamma1, psi[c]))  ### check how to calc psi_bar
+    psi_bar = np.conj(np.matmul(psi[c], eps))  ### check how to calc psi_bar
     S = - K * np.imag(np.matmul(psi_bar, D_psi)) + _mass * np.real(np.matmul(psi_bar, psi[c]))
     return S
 
@@ -74,16 +74,15 @@ def S_psi_free(adj, psi, c, sign):
         j = 3 * c + i
         adj_c = adj[j] // 3
         alpha = theta[i] - theta[adj[j] % 3] + np.pi
-
-        U = sign[j]*paral_trans(alpha/2)                # factor of 1/2 accounts for spinor transport (I should store the possible values of U)
-
+        U = sign[j] * paral_trans(alpha/2)            # factor of 1/2 accounts for spinor transport
+                                                      # (I should store the possible values of U)
         d_psi = (np.matmul(U, psi[adj_c]) - psi[c])
         d_psi_x += d_psi * np.cos(theta[i])
         d_psi_y += d_psi * np.sin(theta[i])
 
     D_psi = np.matmul(id + gamma1, d_psi_x) / 2 + np.matmul(id + gamma2, d_psi_y) / 2
-    psi_bar = np.conj(np.matmul(gamma1, psi[c]))      ### check how to calc psi_bar
-    S = - K * np.imag(np.matmul(psi_bar, D_psi)) + _mass * np.real(np.matmul(psi_bar, psi[c]))
+    psi_bar = np.matmul(eps, psi[c])      ### check how to calc psi_bar
+    S = - K * np.matmul(psi_bar, D_psi) + _mass * np.matmul(psi_bar, psi[c])
     return S
 
 ###check action calculation thoroughly     ### check why psi tends to diverge
