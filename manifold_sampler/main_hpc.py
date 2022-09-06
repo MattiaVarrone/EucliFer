@@ -3,9 +3,9 @@ from Analysis_utils import *
 from scipy.interpolate import CubicSpline
 
 # params for the lattice-matter system and sampling
-sizes = [(int(i) // 2) * 2 for i in np.geomspace(30, 60, 4)]
-beta = 0.5
-matter = 'scalar'
+sizes = [(int(i) // 2) * 2 for i in np.geomspace(100, 500, 8)]
+beta = 0.63
+matter = 'ising'
 strategy = ['gravity', matter]
 eq_sweeps, meas_sweeps, n_measurements = 200, 4, 200
 
@@ -64,6 +64,7 @@ ax[1].plot(x, y, 'gx')
 
 ax[0].set_title('Distance Profiles'), ax[1].set_title('$Log(r_{max})\; vs\; Log(N)$')
 ax[0].legend(["N = " + str(N) for N in sizes]), ax[1].legend(["Spline", "No spline"])
+fig.suptitle(f'{matter = }, {beta = }')
 
 ID = "" if array_id is None else str(array_id)
 fig.set_size_inches(8, 5)
@@ -71,7 +72,7 @@ plt.savefig("data/pics/dist_" + matter + "_" + ID + ".png")
 plt.show()
 
 
-##### results and infos #####
+##### print results and info #####
 print('Number of cores: ' + str(mp.cpu_count()))
 print(f'{array_id = }')
 

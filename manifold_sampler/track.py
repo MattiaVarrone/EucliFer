@@ -2,7 +2,7 @@ import numpy as np
 
 from Analysis_utils import *
 
-N = 32
+N = 64
 iter = 10
 
 beta = 0.63
@@ -19,7 +19,7 @@ for m in masses:
 """
 _mass = 0
 l = Manifold(N)
-strategy = ['gravity', 'scalar']
+strategy = ['gravity', 'ising']
 
 range = range(1000)
 Ss = []
@@ -35,6 +35,7 @@ for i in range:
     Psis.append(np.std(l.psi))
     l.sweep(1, beta=beta, strategy=strategy)
 
+fig.suptitle("Lattice size = " + str(N) + f', {beta = }')
 ax[0].plot(range, Ss), ax[0].set_title("Action")
 ax[1].plot(range, Phis), ax[1].set_title("Phi")
 ax[2].plot(range, Ms), ax[2].set_title("Magn")

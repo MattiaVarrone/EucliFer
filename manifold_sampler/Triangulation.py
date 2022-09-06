@@ -13,10 +13,10 @@ phi_range = 1
 sigma_const = 1
 
 # spinor field params
-psi_const = 1
+K = 1
 psi_range = 0.7
 A_range = 1
-_mass = 0
+_mass = 1/2
 ### figure out what this is in 2d euclidean space
 gamma1 = np.array([[0, 1], [1, 0]])  ### refer to Zuber
 gamma2 = np.array([[0, -1j], [1j, 0]])  ### are these the correct gamma matrices in euclidean space?
@@ -33,12 +33,23 @@ def S_phi(adj, phi, c):
     return S
 
 
-def paral_trans(A_i):  ### check how to calculate parallel transporter
-    U = np.cos(A_i) * id + np.sin(A_i) * eps
+def S_sigma(adj, sigma, c):
+    S = 0
+    for i in range(3):
+        adj_c = adj[3 * c + i] // 3
+        S += - sigma_const * sigma[c] * sigma[adj_c]
+    return S
+
+
+def paral_trans(A):  ### check how to calculate parallel transporter
+    U = np.cos(A) * id + np.sin(A) * eps
     return U
 
 
-def S_psi(adj, psi, c, A):
+theta = [np.pi, np.pi / 3, 5 * np.pi / 3]
+
+
+def S_psi_full(adj, psi, c, A):
     d_psi_x, d_psi_y = 0, 0
 
     for i in range(3):
@@ -53,20 +64,32 @@ def S_psi(adj, psi, c, A):
 
     D_psi = np.matmul(id + gamma1, d_psi_x) / 2 + np.matmul(id + gamma2, d_psi_y) / 2
     psi_bar = np.conj(np.matmul(gamma1, psi[c]))  ### check how to calc psi_bar
+    S = - K * np.imag(np.matmul(psi_bar, D_psi)) + _mass * np.real(np.matmul(psi_bar, psi[c]))
+    return S
+
+
+def S_psi(adj, psi, c, s):
+    d_psi_x, d_psi_y = 0, 0
+
+    for i in range(3):
+        j = 3 * c + i
+        adj_c = adj[j] // 3
+        alpha = theta[i] - theta[adj[j] % 3] + np.pi
+
+        U = s[j]*paral_trans(alpha/2)                # factor of 1/2 accounts for spinor transport
+
+        d_psi = (np.matmul(U, psi[adj_c]) - psi[c])
+        d_psi_x += d_psi * np.cos(theta[i])
+        d_psi_y += d_psi * np.sin(theta[i])
+
+    D_psi = np.matmul(id + gamma1, d_psi_x) / 2 + np.matmul(id + gamma2, d_psi_y) / 2
+    psi_bar = np.conj(np.matmul(gamma1, psi[c]))  ### check how to calc psi_bar
     S = - psi_const * np.imag(np.matmul(psi_bar, D_psi)) + _mass * np.real(np.matmul(psi_bar, psi[c]))
     return S
 
 
 ###check action calculation thoroughly     ### check why psi tends to diverge
 ### check how to obtain real action: take imag() or use hermit conjugate
-
-
-def S_sigma(adj, sigma, c):
-    S = 0
-    for i in range(3):
-        adj_c = adj[3 * c + i] // 3
-        S += - sigma_const * sigma[c] * sigma[adj_c]
-    return S
 
 
 class Manifold:
@@ -76,10 +99,12 @@ class Manifold:
         self.N = N
         self.adj = fan_triangulation(N)
 
-        self.psi = np.zeros((N, 2), dtype=np.complex_)
-        self.A = np.zeros(3 * N)
         self.phi = np.zeros(N)
         self.sigma = np.ones(N)
+
+        self.psi = np.zeros((N, 2), dtype=np.complex_)
+        self.A = np.zeros(3 * N)  # variable gauge link
+        self.s = np.ones(3 * N)  # gauge link sign
 
     def random_update(self, beta, strategy):
         if 'gravity' in strategy:
