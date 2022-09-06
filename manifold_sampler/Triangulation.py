@@ -53,7 +53,7 @@ def S_psi(adj, psi, c, A):
 
     D_psi = np.matmul(id + gamma1, d_psi_x) / 2 + np.matmul(id + gamma2, d_psi_y) / 2
     psi_bar = np.conj(np.matmul(gamma1, psi[c]))  ### check how to calc psi_bar
-    S = - psi_const * np.imag(np.matmul(psi_bar, D_psi)) + _mass * np.matmul(psi_bar, psi[c])
+    S = - psi_const * np.imag(np.matmul(psi_bar, D_psi)) + _mass * np.real(np.matmul(psi_bar, psi[c]))
     return S
 
 
@@ -80,7 +80,6 @@ class Manifold:
         self.A = np.zeros(3 * N)
         self.phi = np.zeros(N)
         self.sigma = np.ones(N)
-        self.S = 0
 
     def random_update(self, beta, strategy):
         if 'gravity' in strategy:
@@ -92,7 +91,7 @@ class Manifold:
         if 'spinor' in strategy:
             random_centre, random_side = rng.integers(0, self.N), rng.integers(0, len(self.adj))
             self.psi = self.update_field(random_centre, self.psi, psi_range,
-                                    action=S_psi, beta=beta, is_complex=True, add_field=self.A)
+                                         action=S_psi, beta=beta, is_complex=True, add_field=self.A)
             self.A = self.update_gauge(random_side, self.A, A_range, action=S_psi, beta=beta, matt_field=self.psi)
         if 'ising' in strategy:
             random_centre = rng.integers(0, self.N)
@@ -152,7 +151,6 @@ class Manifold:
             if p > np.random.rand():
                 self.adj = adj_new
                 self.A = A_new
-                self.S += dS
 
     def update_field(self, i, field, field_range, action, beta, is_complex=False, add_field=None):
         field_new = np.copy(field)
@@ -170,7 +168,6 @@ class Manifold:
         p = np.exp(-beta * dS)
         if p > np.random.rand():
             field = field_new
-            self.S += dS
         return field
 
     def update_gauge(self, i, gauge, gauge_range, action, beta, matt_field):
@@ -187,7 +184,6 @@ class Manifold:
         p = np.exp(-beta * dS)
         if p > np.random.rand():
             gauge = gauge_new
-            self.S += dS
         return gauge
 
     def update_spin(self, c, beta):
@@ -201,4 +197,13 @@ class Manifold:
         if p > np.random.rand():
             self.sigma = sigma_new
 
-
+    def S_tot(self, strategy):
+        S = 0
+        for c in range(self.N):
+            if 'scalar' in strategy:
+                S += S_phi(self.adj, self.phi, c)
+            if 'spinor' in strategy:
+                S += S_psi(self.adj, self.psi, c, self.A)
+            if 'ising' in strategy:
+                S += S_sigma(self.adj, self.sigma, c)
+        return S
