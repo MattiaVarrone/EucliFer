@@ -1,95 +1,7 @@
+from Action import *
 from Graph_utils import *
 
 rng = np.random.default_rng()
-
-# beta is the inverse strength of gravity
-beta = 1
-
-# scalar field params
-phi_const = 1
-phi_range = 1
-
-# ising params
-sigma_const = 1
-
-# spinor field params
-K = 1
-psi_range = 0.7
-A_range = 1
-_mass = 1/2
-### figure out what this is in 2d euclidean space
-gamma1 = np.array([[0, 1], [1, 0]])  ### refer to Zuber
-gamma2 = np.array([[0, -1j], [1j, 0]])  ### are these the correct gamma matrices in euclidean space?
-
-id = np.identity(2)
-eps = np.array([[0, 1], [-1, 0]])
-
-
-def S_phi(adj, phi, c):
-    S = 0
-    for i in range(3):
-        adj_c = adj[3 * c + i] // 3
-        S += phi_const * (phi[c] - phi[adj_c]) ** 2
-    return S
-
-
-def S_sigma(adj, sigma, c):
-    S = 0
-    for i in range(3):
-        adj_c = adj[3 * c + i] // 3
-        S += - sigma_const * sigma[c] * sigma[adj_c]
-    return S
-
-
-def paral_trans(A):  ### check how to calculate parallel transporter
-    U = np.cos(A) * id + np.sin(A) * eps
-    return U
-
-
-theta = [np.pi, np.pi / 3, 5 * np.pi / 3]
-
-
-def S_psi_full(adj, psi, c, A):
-    d_psi_x, d_psi_y = 0, 0
-
-    for i in range(3):
-        j = 3 * c + i
-        theta = 2 * i * np.pi / 3
-        adj_c = adj[j] // 3
-
-        # we need parallel transport to take derivatives
-        d_psi = (np.matmul(paral_trans(A[j]), psi[adj_c]) - psi[c])  ### check how to calculate parallel transporter
-        d_psi_x += d_psi * np.cos(theta)
-        d_psi_y += d_psi * np.sin(theta)
-
-    D_psi = np.matmul(id + gamma1, d_psi_x) / 2 + np.matmul(id + gamma2, d_psi_y) / 2
-    psi_bar = np.conj(np.matmul(gamma1, psi[c]))  ### check how to calc psi_bar
-    S = - K * np.imag(np.matmul(psi_bar, D_psi)) + _mass * np.real(np.matmul(psi_bar, psi[c]))
-    return S
-
-
-def S_psi(adj, psi, c, s):
-    d_psi_x, d_psi_y = 0, 0
-
-    for i in range(3):
-        j = 3 * c + i
-        adj_c = adj[j] // 3
-        alpha = theta[i] - theta[adj[j] % 3] + np.pi
-
-        U = s[j]*paral_trans(alpha/2)                # factor of 1/2 accounts for spinor transport
-
-        d_psi = (np.matmul(U, psi[adj_c]) - psi[c])
-        d_psi_x += d_psi * np.cos(theta[i])
-        d_psi_y += d_psi * np.sin(theta[i])
-
-    D_psi = np.matmul(id + gamma1, d_psi_x) / 2 + np.matmul(id + gamma2, d_psi_y) / 2
-    psi_bar = np.conj(np.matmul(gamma1, psi[c]))  ### check how to calc psi_bar
-    S = - psi_const * np.imag(np.matmul(psi_bar, D_psi)) + _mass * np.real(np.matmul(psi_bar, psi[c]))
-    return S
-
-
-###check action calculation thoroughly     ### check why psi tends to diverge
-### check how to obtain real action: take imag() or use hermit conjugate
 
 
 class Manifold:
@@ -104,7 +16,7 @@ class Manifold:
 
         self.psi = np.zeros((N, 2), dtype=np.complex_)
         self.A = np.zeros(3 * N)  # variable gauge link
-        self.s = np.ones(3 * N)  # gauge link sign
+        self.sign = np.ones(3 * N)  # gauge link sign
 
     def random_update(self, beta, strategy):
         if 'gravity' in strategy:
@@ -113,14 +25,18 @@ class Manifold:
         if 'scalar' in strategy:
             random_centre = rng.integers(0, self.N)
             self.phi = self.update_field(random_centre, self.phi, phi_range, action=S_phi, beta=beta)
-        if 'spinor' in strategy:
-            random_centre, random_side = rng.integers(0, self.N), rng.integers(0, len(self.adj))
-            self.psi = self.update_field(random_centre, self.psi, psi_range,
-                                         action=S_psi, beta=beta, is_complex=True, add_field=self.A)
-            self.A = self.update_gauge(random_side, self.A, A_range, action=S_psi, beta=beta, matt_field=self.psi)
         if 'ising' in strategy:
             random_centre = rng.integers(0, self.N)
             self.update_spin(random_centre, beta)
+        if 'spinor_free' in strategy:
+            random_centre = rng.integers(0, self.N)
+            self.psi = self.update_field(random_centre, self.psi, psi_range,
+                                         action=S_psi_free, beta=beta, is_complex=True, add_field=self.sign)
+        if 'spinor_inter' in strategy:
+            random_centre, random_side = rng.integers(0, self.N), rng.integers(0, len(self.adj))
+            self.psi = self.update_field(random_centre, self.psi, psi_range,
+                                         action=S_psi_inter, beta=beta, is_complex=True, add_field=self.A)
+            self.A = self.update_gauge(random_side, self.A, A_range, action=S_psi_inter, beta=beta, matt_field=self.psi)
 
     def sweep(self, n_sweeps, beta, strategy):
         n = n_sweeps * 3 * self.N
@@ -133,6 +49,7 @@ class Manifold:
 
             adj_new = np.copy(self.adj)
             A_new = np.copy(self.A)
+            sign_new = np.copy(self.sign)
 
             j = prev_(i)
             k = adj_new[i]
@@ -157,19 +74,26 @@ class Manifold:
                 S_old = S_phi(self.adj, self.phi, c1) + S_phi(self.adj, self.phi, c2)
                 S_new = S_phi(adj_new, self.phi, c1) + S_phi(adj_new, self.phi, c2)
                 dS += S_new - S_old
-            if 'spinor' in strategy:
+            if 'ising' in strategy:
+                S_old = S_sigma(self.adj, self.sigma, c1) + S_sigma(self.adj, self.sigma, c2)
+                S_new = S_sigma(adj_new, self.sigma, c1) + S_sigma(adj_new, self.sigma, c2)
+                dS += S_new - S_old
+            if 'spinor_free' in strategy:
+                # signs of parallel transporters need to be changed to ensure positive plaquette sign. (A drawing would be useful)
+
+
+                S_old = S_psi_free(self.adj, self.psi, c1, self.sign) + S_psi_free(self.adj, self.psi, c2, self.sign)
+                S_new = S_psi_free(adj_new, self.psi, c1, sign_new) + S_psi_free(adj_new, self.psi, c2, sign_new)
+                dS += S_new - S_old
+            if 'spinor_inter' in strategy:
                 # gauge links corresponding to adjacent sides must be opposites
                 A_new[i] = -self.A[n]
                 A_new[k] = -self.A[m]
                 A_new[l] = -self.A[i]
                 A_new[j] = -A_new[l]
 
-                S_old = S_psi(self.adj, self.psi, c1, self.A) + S_psi(self.adj, self.psi, c2, self.A)
-                S_new = S_psi(adj_new, self.psi, c1, A_new) + S_psi(adj_new, self.psi, c2, A_new)
-                dS += S_new - S_old
-            if 'ising' in strategy:
-                S_old = S_sigma(self.adj, self.sigma, c1) + S_sigma(self.adj, self.sigma, c2)
-                S_new = S_sigma(adj_new, self.sigma, c1) + S_sigma(adj_new, self.sigma, c2)
+                S_old = S_psi_inter(self.adj, self.psi, c1, self.A) + S_psi_inter(self.adj, self.psi, c2, self.A)
+                S_new = S_psi_inter(adj_new, self.psi, c1, A_new) + S_psi_inter(adj_new, self.psi, c2, A_new)
                 dS += S_new - S_old
 
             p = np.exp(-beta * dS)
@@ -227,8 +151,10 @@ class Manifold:
         for c in range(self.N):
             if 'scalar' in strategy:
                 S += S_phi(self.adj, self.phi, c)
-            if 'spinor' in strategy:
-                S += S_psi(self.adj, self.psi, c, self.A)
+            if 'spinor_free' in strategy:
+                S += S_psi_free(self.adj, self.psi, c, self.sign)
+            if 'spinor_inter' in strategy:
+                S += S_psi_inter(self.adj, self.psi, c, self.A)
             if 'ising' in strategy:
                 S += S_sigma(self.adj, self.sigma, c)
         return S

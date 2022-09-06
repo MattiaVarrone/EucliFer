@@ -40,6 +40,6 @@ class TestPsi(unittest.TestCase):
             product = np.matmul(psi_bar, psi)
             self.assertAlmostEqual(np.imag(product), 0)
 
-
+    ### test plaquette sign
 if __name__ == '__main__':
     unittest.main()

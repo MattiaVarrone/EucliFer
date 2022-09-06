@@ -2,33 +2,20 @@ import numpy as np
 
 from Analysis_utils import *
 
-N = 64
-iter = 10
-
+N = 32
 beta = 0.63
+strategy = ['gravity', 'spinor_free']
 
-
-masses = np.geomspace(0.1, 100, 3)
-"""
-for m in masses:
-    _mass = m
-    l = Manifold(N)
-    l.sweep(iter, beta=beta, strategy=['gravity', 'spinor'])
-    std = np.std(l.psi)
-    print(f'{m = } : {std = }')
-"""
-_mass = 0
 l = Manifold(N)
-strategy = ['gravity', 'ising']
 
-range = range(1000)
+range = range(100)
 Ss = []
 Phis = []
 Ms = []
 Psis = []
 
 fig, ax = plt.subplots(4)
-for i in range:
+for _ in range:
     Ss.append(l.S_tot(strategy)/N)
     Phis.append(np.std(l.phi))
     Ms.append(np.average(l.sigma))
