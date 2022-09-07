@@ -45,13 +45,15 @@ class TestPsi(unittest.TestCase):
 
         # check if m.sign works in initial config
         for i in range(len(m.adj)):
-            trace_plaquette, def_triangles = circle_vertex(m.adj, m.sign, i)
+            U, def_triangles = circle_vertex(m.adj, m.sign, i)
+            trace_plaquette = np.trace(U) / 2
             self.assertAlmostEqual(trace_plaquette, np.cos(def_triangles*np.pi/6))
 
         # m.sign works after evolution
-        m.sweep(10, 1, ['gravity', 'spinor_free'])
+        m.random_update(1, ['gravity', 'spinor_free'])
         for i in range(len(m.adj)):
-            trace_plaquette, def_triangles = circle_vertex(m.adj, m.sign, i)
+            U, def_triangles = circle_vertex(m.adj, m.sign, i)
+            trace_plaquette = np.trace(U)/2
             print(np.cos(def_triangles*np.pi/6))
             self.assertAlmostEqual(trace_plaquette, np.cos(def_triangles*np.pi/6))
 

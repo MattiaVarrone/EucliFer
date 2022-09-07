@@ -18,8 +18,7 @@ def circle_vertex(adj, sign, i):
         def_triangles -= 1
         j = next_(adj[j])
 
-    trace = np.trace(U) / 2
-    return trace, def_triangles
+    return U, def_triangles
 
 
 class Manifold:
@@ -97,21 +96,21 @@ class Manifold:
                 S_new = S_sigma(adj_new, self.sigma, c1) + S_sigma(adj_new, self.sigma, c2)
                 dS += S_new - S_old
             if 'spinor_free' in strategy:
-                # signs of parallel transporters need to be changed to ensure positive plaquette sign
+                # signs of parallel transporters are updated to ensure positive plaquette sign
                 ##### (check p. 88 at https://hef.ru.nl/~tbudd/mct/mct_book.pdf for a labelling scheme) #####
+                sign_new[i] = sign_new[n]
                 sign_new[k] = sign_new[m]
                 sign_new[j] = sign_new[l]
-                sign_new[n] = sign_new[i]
+
                 for edge in (n, m, l):
-                    trace, def_triangles = circle_vertex(adj_new, sign_new, edge)
+                    U, def_triangles = circle_vertex(adj_new, sign_new, edge)
+                    trace = np.trace(U)/2
                     trace_th = np.cos(def_triangles * np.pi / 6)
 
-                    if def_triangles % 12 == 3:
-                        s = 1
-                    elif def_triangles % 12 == 9:
-                        s = -1
+                    if np.isclose(trace, 0):   ### problems when trace = 0
+                        s = np.sign(U[0, 1]/np.sin(def_triangles * np.pi / 6))
                     else:
-                        s = np.sign(trace / trace_th)  ### problems when trace = 0
+                        s = np.sign(trace / trace_th)
                     sign_new[edge] = s
                     sign_new[adj_new[edge]] = s
 
@@ -135,17 +134,17 @@ class Manifold:
                 self.A = A_new
                 self.sign = sign_new
 
-    def update_field(self, i, field, field_range, action, beta, is_complex=False, add_field=None):
+    def update_field(self, c, field, field_range, action, beta, is_complex=False, add_field=None):
         field_new = np.copy(field)
         field_real = np.random.normal(size=field[0].shape)
         field_imaginary = np.random.normal(size=field[0].shape) * 1j if is_complex else 0
-        field_new[i] += field_range * (field_real + field_imaginary)
+        field_new[c] += field_range * (field_real + field_imaginary)
         if add_field is not None:
-            S_old = action(self.adj, field, i, add_field)
-            S_new = action(self.adj, field_new, i, add_field)
+            S_old = action(self.adj, field, c, add_field)
+            S_new = action(self.adj, field_new, c, add_field)
         else:
-            S_old = action(self.adj, field, i)
-            S_new = action(self.adj, field_new, i)
+            S_old = action(self.adj, field, c)
+            S_new = action(self.adj, field_new, c)
         dS = S_new - S_old
 
         p = np.exp(-beta * dS)
