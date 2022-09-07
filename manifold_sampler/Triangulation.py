@@ -4,19 +4,19 @@ from Graph_utils import *
 rng = np.random.default_rng()
 
 
+# counter-clockwise circling of vertices to compute plaquettes and angle deficiency
 def circle_vertex(adj, sign, i):
-    j = next_(adj[i])
+    j = prev_(adj[i])
     alpha = theta[i % 3] - theta[adj[i] % 3] + np.pi
     U = sign[i] * paral_trans(alpha / 2)
     def_triangles = 6 - 1
 
-    # clockwise circling of vertices
     while j != i:
         alpha = theta[j % 3] - theta[adj[j] % 3] + np.pi
         U_1 = sign[j] * paral_trans(alpha / 2)
         U = np.matmul(U, U_1)
         def_triangles -= 1
-        j = next_(adj[j])
+        j = prev_(adj[j])
 
     return U, def_triangles
 
@@ -102,7 +102,7 @@ class Manifold:
                 sign_new[k] = sign_new[m]
                 sign_new[j] = sign_new[l]
 
-                for edge in (n, m, l):
+                for edge in (i, k, j):
                     U, def_triangles = circle_vertex(adj_new, sign_new, edge)
                     trace = np.trace(U)/2
                     trace_th = np.cos(def_triangles * np.pi / 6)

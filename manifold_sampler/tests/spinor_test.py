@@ -43,14 +43,14 @@ class TestPsi(unittest.TestCase):
         N = 16
         m = Manifold(N)
 
-        # check if m.sign works in initial config
+        # check if the fan triangulation has a consistent sign configuration
         for i in range(len(m.adj)):
             U, def_triangles = circle_vertex(m.adj, m.sign, i)
             trace_plaquette = np.trace(U) / 2
             self.assertAlmostEqual(trace_plaquette, np.cos(def_triangles*np.pi/6))
 
-        # m.sign works after evolution
-        m.random_update(1, ['gravity', 'spinor_free'])
+        # check if edge flips preserve the consistency of the sign configuration
+        m.sweep(n_sweeps=1, beta=0.6, strategy=['gravity', 'spinor_free'])
         for i in range(len(m.adj)):
             U, def_triangles = circle_vertex(m.adj, m.sign, i)
             trace_plaquette = np.trace(U)/2
