@@ -45,16 +45,22 @@ class TestPsi(unittest.TestCase):
 
         # check if m.sign works in initial config
         for i in range(len(m.adj)):
-            trace_plaquette, def_angle = circle_vertex(m.adj, m.sign, i)
-            self.assertAlmostEqual(trace_plaquette, np.cos(def_angle/2))
+            trace_plaquette, def_triangles = circle_vertex(m.adj, m.sign, i)
+            self.assertAlmostEqual(trace_plaquette, np.cos(def_triangles*np.pi/6))
 
         # m.sign works after evolution
         m.sweep(10, 1, ['gravity', 'spinor_free'])
         for i in range(len(m.adj)):
-            trace_plaquette, def_angle = circle_vertex(m.adj, m.sign, i)
-            print(np.cos(def_angle / 2))
-            self.assertAlmostEqual(trace_plaquette, np.cos(def_angle/2))
+            trace_plaquette, def_triangles = circle_vertex(m.adj, m.sign, i)
+            print(np.cos(def_triangles*np.pi/6))
+            self.assertAlmostEqual(trace_plaquette, np.cos(def_triangles*np.pi/6))
 
+    def test_gauge_sign(self):
+        N = 16
+        m = Manifold(N)
+        np.testing.assert_allclose(m.sign**2, np.ones(3*N))
+        m.sweep(10, 0.5, strategy)
+        np.testing.assert_allclose(m.sign**2, np.ones(3*N))
 
 if __name__ == '__main__':
     unittest.main()

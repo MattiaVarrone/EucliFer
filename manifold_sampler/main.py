@@ -1,7 +1,7 @@
 from Analysis_utils import *
 
-N = 50
-n_sweeps = 100
+N = 12
+n_sweeps = 20
 
 beta = 0.63
 K = 0

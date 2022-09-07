@@ -8,18 +8,18 @@ def circle_vertex(adj, sign, i):
     j = next_(adj[i])
     alpha = theta[i % 3] - theta[adj[i] % 3] + np.pi
     U = sign[i] * paral_trans(alpha / 2)
-    def_angle = 2 * np.pi - np.pi / 3
+    def_triangles = 6 - 1
 
     # clockwise circling of vertices
     while j != i:
         alpha = theta[j % 3] - theta[adj[j] % 3] + np.pi
         U_1 = sign[j] * paral_trans(alpha / 2)
         U = np.matmul(U, U_1)
-        def_angle -= np.pi / 3
+        def_triangles -= 1
         j = next_(adj[j])
 
     trace = np.trace(U) / 2
-    return trace, def_angle
+    return trace, def_triangles
 
 
 class Manifold:
@@ -97,11 +97,23 @@ class Manifold:
                 S_new = S_sigma(adj_new, self.sigma, c1) + S_sigma(adj_new, self.sigma, c2)
                 dS += S_new - S_old
             if 'spinor_free' in strategy:
-                # signs of parallel transporters need to be changed to ensure positive plaquette sign.
+                # signs of parallel transporters need to be changed to ensure positive plaquette sign
+                ##### (check p. 88 at https://hef.ru.nl/~tbudd/mct/mct_book.pdf for a labelling scheme) #####
+                sign_new[k] = sign_new[m]
+                sign_new[j] = sign_new[l]
+                sign_new[n] = sign_new[i]
                 for edge in (n, m, l):
-                    trace, def_angle = circle_vertex(adj_new, sign_new, edge)
-                    sign_new[edge] = np.sign(trace / np.cos(def_angle/2))
-                    sign_new[adj_new[edge]] = sign_new[edge]
+                    trace, def_triangles = circle_vertex(adj_new, sign_new, edge)
+                    trace_th = np.cos(def_triangles * np.pi / 6)
+
+                    if def_triangles % 12 == 3:
+                        s = 1
+                    elif def_triangles % 12 == 9:
+                        s = -1
+                    else:
+                        s = np.sign(trace / trace_th)  ### problems when trace = 0
+                    sign_new[edge] = s
+                    sign_new[adj_new[edge]] = s
 
                 S_old = S_psi_free(self.adj, self.psi, c1, self.sign) + S_psi_free(self.adj, self.psi, c2, self.sign)
                 S_new = S_psi_free(adj_new, self.psi, c1, sign_new) + S_psi_free(adj_new, self.psi, c2, sign_new)
