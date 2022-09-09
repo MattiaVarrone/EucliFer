@@ -156,6 +156,7 @@ class Manifold:
                     sign_new[m] = sign_new[k]
                     sign_new[l] = sign_new[j]
                     sign_new[n] = sign_new[i]
+                # the case j == n requires a distinct approach
                 else:
                     print("j == n")
                     g = next_(i)
@@ -275,7 +276,7 @@ class Manifold:
             if 'scalar' in strategy:
                 S += S_phi(self.adj, self.phi, c)
             if 'spinor_free' in strategy:
-                S += S_psi_free(self.adj, self.psi, c, self.sign)
+                S += S_psi_free(self.adj, self.psi, c, (self.sign, self.signc))
             if 'spinor_inter' in strategy:
                 S += S_psi_inter(self.adj, self.psi, c, self.A)
             if 'ising' in strategy:
