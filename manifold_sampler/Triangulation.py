@@ -1,72 +1,24 @@
+from Action import *
 from Graph_utils import *
 
 rng = np.random.default_rng()
 
-# beta is the inverse strength of gravity
-beta = 1
 
-# scalar field params
-phi_const = 1
-phi_range = 1
+# counter-clockwise circling of vertices to compute plaquettes and angle deficiency
+def circle_vertex(adj, sign, signc, i):
+    j = prev_(adj[i])
+    alpha = theta[i % 3] - theta[adj[i] % 3] + np.pi
+    U = signc[i % 3] * sign[i] * paral_trans(alpha / 2)
+    def_triangles = 6 - 1
 
-# ising params
-sigma_const = 1
+    while j != i:
+        alpha = theta[j % 3] - theta[adj[j] % 3] + np.pi
+        U_1 = signc[j % 3] * sign[j] * paral_trans(alpha / 2)
+        U = np.matmul(U, U_1)
+        def_triangles -= 1
+        j = prev_(adj[j])
 
-# spinor field params
-psi_const = 1
-psi_range = 0.7
-A_range = 1
-_mass = 0
-### figure out what this is in 2d euclidean space
-gamma1 = np.array([[0, 1], [1, 0]])  ### refer to Zuber
-gamma2 = np.array([[0, -1j], [1j, 0]])  ### are these the correct gamma matrices in euclidean space?
-
-id = np.identity(2)
-eps = np.array([[0, 1], [-1, 0]])
-
-
-def S_phi(adj, phi, c):
-    S = 0
-    for i in range(3):
-        adj_c = adj[3 * c + i] // 3
-        S += phi_const * (phi[c] - phi[adj_c]) ** 2
-    return S
-
-
-def paral_trans(A_i):  ### check how to calculate parallel transporter
-    U = np.cos(A_i) * id + np.sin(A_i) * eps
-    return U
-
-
-def S_psi(adj, psi, c, A):
-    d_psi_x, d_psi_y = 0, 0
-
-    for i in range(3):
-        j = 3 * c + i
-        theta = 2 * i * np.pi / 3
-        adj_c = adj[j] // 3
-
-        # we need parallel transport to take derivatives
-        d_psi = (np.matmul(paral_trans(A[j]), psi[adj_c]) - psi[c])  ### check how to calculate parallel transporter
-        d_psi_x += d_psi * np.cos(theta)
-        d_psi_y += d_psi * np.sin(theta)
-
-    D_psi = np.matmul(id + gamma1, d_psi_x) / 2 + np.matmul(id + gamma2, d_psi_y) / 2
-    psi_bar = np.conj(np.matmul(gamma1, psi[c]))  ### check how to calc psi_bar
-    S = - psi_const * np.imag(np.matmul(psi_bar, D_psi)) + _mass * np.matmul(psi_bar, psi[c])
-    return S
-
-
-###check action calculation thoroughly     ### check why psi tends to diverge
-### check how to obtain real action: take imag() or use hermit conjugate
-
-
-def S_sigma(adj, sigma, c):
-    S = 0
-    for i in range(3):
-        adj_c = adj[3 * c + i] // 3
-        S += - sigma_const * sigma[c] * sigma[adj_c]
-    return S
+    return U, def_triangles
 
 
 class Manifold:
@@ -76,11 +28,14 @@ class Manifold:
         self.N = N
         self.adj = fan_triangulation(N)
 
-        self.psi = np.zeros((N, 2), dtype=np.complex_)
-        self.A = np.zeros(3 * N)
         self.phi = np.zeros(N)
         self.sigma = np.ones(N)
-        self.S = 0
+
+        self.psi = np.zeros((N, 2), dtype=np.complex_)  ### should use majorana basis eventually
+        self.A = np.zeros(3 * N)  # variable gauge link
+
+        self.sign = fan_sign(self.adj)  # gauge link sign corresponding to edges
+        self.signc = np.ones(N)  # gauge link sign corresponding to centres
 
     def random_update(self, beta, strategy):
         if 'gravity' in strategy:
@@ -89,14 +44,19 @@ class Manifold:
         if 'scalar' in strategy:
             random_centre = rng.integers(0, self.N)
             self.phi = self.update_field(random_centre, self.phi, phi_range, action=S_phi, beta=beta)
-        if 'spinor' in strategy:
-            random_centre, random_side = rng.integers(0, self.N), rng.integers(0, len(self.adj))
-            self.psi = self.update_field(random_centre, self.psi, psi_range,
-                                    action=S_psi, beta=beta, is_complex=True, add_field=self.A)
-            self.A = self.update_gauge(random_side, self.A, A_range, action=S_psi, beta=beta, matt_field=self.psi)
         if 'ising' in strategy:
             random_centre = rng.integers(0, self.N)
             self.update_spin(random_centre, beta)
+        if 'spinor_free' in strategy:
+            random_centre = rng.integers(0, self.N)
+            self.psi = self.update_field(random_centre, self.psi, psi_range,
+                                         action=S_psi_free, beta=beta, is_complex=False,
+                                         add_field=(self.sign, self.signc))
+        if 'spinor_inter' in strategy:
+            random_centre, random_side = rng.integers(0, self.N), rng.integers(0, len(self.adj))
+            self.psi = self.update_field(random_centre, self.psi, psi_range,
+                                         action=S_psi_inter, beta=beta, is_complex=True, add_field=self.A)
+            self.A = self.update_gauge(random_side, self.A, A_range, action=S_psi_inter, beta=beta, matt_field=self.psi)
 
     def sweep(self, n_sweeps, beta, strategy):
         n = n_sweeps * 3 * self.N
@@ -109,7 +69,10 @@ class Manifold:
 
             adj_new = np.copy(self.adj)
             A_new = np.copy(self.A)
+            sign_new = np.copy(self.sign)
+            signc_new = np.copy(self.signc)
 
+            # (check p. 88 at https://hef.ru.nl/~tbudd/mct/mct_book.pdf for a labelling scheme)
             j = prev_(i)
             k = adj_new[i]
             l = prev_(k)
@@ -133,44 +96,151 @@ class Manifold:
                 S_old = S_phi(self.adj, self.phi, c1) + S_phi(self.adj, self.phi, c2)
                 S_new = S_phi(adj_new, self.phi, c1) + S_phi(adj_new, self.phi, c2)
                 dS += S_new - S_old
-            if 'spinor' in strategy:
-                # gauge links corresponding to adjacent sides must be opposites
-                A_new[i] = -self.A[n]
-                A_new[k] = -self.A[m]
-                A_new[l] = -self.A[i]
-                A_new[j] = -A_new[l]
-
-                S_old = S_psi(self.adj, self.psi, c1, self.A) + S_psi(self.adj, self.psi, c2, self.A)
-                S_new = S_psi(adj_new, self.psi, c1, A_new) + S_psi(adj_new, self.psi, c2, A_new)
-                dS += S_new - S_old
             if 'ising' in strategy:
                 S_old = S_sigma(self.adj, self.sigma, c1) + S_sigma(self.adj, self.sigma, c2)
                 S_new = S_sigma(adj_new, self.sigma, c1) + S_sigma(adj_new, self.sigma, c2)
+                dS += S_new - S_old
+            if 'spinor_free' in strategy:
+                # signs of parallel transporters are updated to ensure positive plaquette sign
+                # re-initialise signs
+                edges = (i, j, k, l, m, n)
+                for edge in edges:
+                    sign_new[edge] = 1
+
+
+                ### THIS IS JUST USEFUL DATA
+                sign0 = {}
+                for symbol, edge in zip(('i', 'j', 'k', 'l', 'm', 'n'), edges):
+                    sign0[symbol] = self.sign[edge]
+
+                sign = {}
+                for symbol, edge in zip(('i', 'j', 'k', 'l', 'm', 'n'), edges):
+                    sign[symbol] = sign_new[edge]
+
+                sign_flip0 = []
+                for edge in (m, k, n, i):
+                    U, def_triangles = circle_vertex(self.adj, self.sign, self.signc, edge)
+                    trace = np.trace(U) / 2
+                    trace_th = np.cos(def_triangles * np.pi / 6)
+                    sign_flip0.append(np.sign(trace / trace_th))
+
+                sign_flip = []
+                for edge in (i, k, j, l):
+                    U, def_triangles = circle_vertex(adj_new, sign_new, signc_new, edge)
+                    trace = np.trace(U) / 2
+                    trace_th = np.cos(def_triangles * np.pi / 6)
+                    sign_flip.append(np.sign(trace / trace_th))
+
+                ###### THIS IS THE IMPORTANT PART ######
+                # ss[x] is 1 if the plaquette corresp to edge x has correct sign, while it is -1 otherwise
+                ss = {}
+                for edge in (i, j, k, l):
+                    U, def_triangles = circle_vertex(adj_new, sign_new, signc_new, edge)
+                    trace = np.trace(U) / 2
+                    trace_th = np.cos(def_triangles * np.pi / 6)
+
+                    if np.isclose(trace, 0):  ### problems when trace = 0
+                        s = np.sign(U[0, 1] / np.sin(def_triangles * np.pi / 6))
+                    else:
+                        s = np.sign(trace / trace_th)
+                    ss[edge] = s
+
+                # we enforce consistency relations ### check!
+                if j != n:
+                    sign_new[k] *= ss[k]
+                    sign_new[j] *= ss[i] * ss[j]
+                    sign_new[i] *= ss[j] * ss[k] * ss[l]
+                    signc_new[i % 3] *= ss[i] * ss[j] * ss[k] * ss[l]
+
+                    ### modify for case j == n
+                    sign_new[m] = sign_new[k]
+                    sign_new[l] = sign_new[j]
+                    sign_new[n] = sign_new[i]
+                # the case j == n requires a distinct approach
+                else:
+                    print("j == n")
+                    g = next_(i)
+                    h = next_(k)
+                    sign_new[g] *= ss[i]
+                    sign_new[h] *= ss[j]
+                    sign_new[adj_new[g]] = sign_new[g]
+                    sign_new[adj_new[h]] = sign_new[h]
+
+                ###### END OF IMPORTANT PART ######
+
+
+                ### MORE USEFUL DATA
+                sign1 = {}
+                for symbol, edge in zip(('i', 'j', 'k', 'l', 'm', 'n'), (i, j, k, l, m, n)):
+                    sign1[symbol] = sign_new[edge]
+
+                sign_flip1 = []
+                for edge in (i, k, j, l):
+                    U, def_triangles = circle_vertex(adj_new, sign_new, signc_new, edge)
+                    trace = np.trace(U) / 2
+                    trace_th = np.cos(def_triangles * np.pi / 6)
+                    sign_flip1.append(np.sign(trace / trace_th))
+
+                for edge in range(len(adj_new)):
+                    if sign_new[edge] != sign_new[adj_new[edge]]:
+                        print("error")
+                        print(j==n)
+                        t = 1
+                ss1 = {}
+                for edge in (i, j, k, l):
+                    U, def_triangles = circle_vertex(adj_new, sign_new, signc_new, edge)
+                    trace = np.trace(U) / 2
+                    trace_th = np.cos(def_triangles * np.pi / 6)
+
+                    if np.isclose(trace, 0):  ### problems when trace = 0
+                        s = 0.000001
+                    else:
+                        s = np.sign(trace / trace_th)
+                    ss1[edge] = s
+                    if s != 1:
+                        print("s != 1")
+
+                # action variation
+                signs = (self.sign, self.signc)
+                signs_new = (sign_new, signc_new)
+                S_old = S_psi_free(self.adj, self.psi, c1, signs) + S_psi_free(self.adj, self.psi, c2, signs)
+                S_new = S_psi_free(adj_new, self.psi, c1, signs_new) + S_psi_free(adj_new, self.psi, c2, signs_new)
+                dS += S_new - S_old
+            if 'spinor_inter' in strategy:
+                # gauge links corresponding to adjacent sides must be opposites
+                A_new[i] = -self.A[n]
+                A_new[k] = -self.A[m]
+                A_new[m] = -A_new[k]   # accounts for the case when j == n
+                A_new[l] = -self.A[i]
+                A_new[j] = -A_new[l]
+
+                S_old = S_psi_inter(self.adj, self.psi, c1, self.A) + S_psi_inter(self.adj, self.psi, c2, self.A)
+                S_new = S_psi_inter(adj_new, self.psi, c1, A_new) + S_psi_inter(adj_new, self.psi, c2, A_new)
                 dS += S_new - S_old
 
             p = np.exp(-beta * dS)
             if p > np.random.rand():
                 self.adj = adj_new
                 self.A = A_new
-                self.S += dS
+                self.sign = sign_new
+                self.signc = signc_new
 
-    def update_field(self, i, field, field_range, action, beta, is_complex=False, add_field=None):
+    def update_field(self, c, field, field_range, action, beta, is_complex=False, add_field=None):
         field_new = np.copy(field)
         field_real = np.random.normal(size=field[0].shape)
         field_imaginary = np.random.normal(size=field[0].shape) * 1j if is_complex else 0
-        field_new[i] += field_range * (field_real + field_imaginary)
+        field_new[c] += field_range * (field_real + field_imaginary)
         if add_field is not None:
-            S_old = action(self.adj, field, i, add_field)
-            S_new = action(self.adj, field_new, i, add_field)
+            S_old = action(self.adj, field, c, add_field)
+            S_new = action(self.adj, field_new, c, add_field)
         else:
-            S_old = action(self.adj, field, i)
-            S_new = action(self.adj, field_new, i)
+            S_old = action(self.adj, field, c)
+            S_new = action(self.adj, field_new, c)
         dS = S_new - S_old
 
         p = np.exp(-beta * dS)
         if p > np.random.rand():
             field = field_new
-            self.S += dS
         return field
 
     def update_gauge(self, i, gauge, gauge_range, action, beta, matt_field):
@@ -187,7 +257,6 @@ class Manifold:
         p = np.exp(-beta * dS)
         if p > np.random.rand():
             gauge = gauge_new
-            self.S += dS
         return gauge
 
     def update_spin(self, c, beta):
@@ -201,4 +270,15 @@ class Manifold:
         if p > np.random.rand():
             self.sigma = sigma_new
 
-
+    def S_tot(self, strategy):
+        S = 0
+        for c in range(self.N):
+            if 'scalar' in strategy:
+                S += S_phi(self.adj, self.phi, c)
+            if 'spinor_free' in strategy:
+                S += S_psi_free(self.adj, self.psi, c, (self.sign, self.signc))
+            if 'spinor_inter' in strategy:
+                S += S_psi_inter(self.adj, self.psi, c, self.A)
+            if 'ising' in strategy:
+                S += S_sigma(self.adj, self.sigma, c)
+        return S
