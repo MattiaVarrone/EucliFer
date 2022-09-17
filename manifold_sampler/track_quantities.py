@@ -2,13 +2,13 @@ import numpy as np
 
 from Analysis_utils import *
 
-N = 32
+N = 16
 beta = 0.63
 strategy = ['gravity', 'scalar']
 
 l = Manifold(N)
 
-range = range(100)
+range = range(30)
 Ss = []
 Phis = []
 Ms = []

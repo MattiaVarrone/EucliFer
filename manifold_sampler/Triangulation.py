@@ -6,14 +6,14 @@ rng = np.random.default_rng()
 
 # counter-clockwise circling of vertices to compute plaquettes and angle deficiency
 def circle_vertex(adj, sign, signc, i):
-    j = prev_(adj[i])
     alpha = theta[i % 3] - theta[adj[i] % 3] + np.pi
-    U = signc[i % 3] * sign[i] * paral_trans(alpha / 2)
+    U = signc[i // 3] * sign[i] * paral_trans(alpha / 2)
     def_triangles = 6 - 1
 
+    j = prev_(adj[i])
     while j != i:
         alpha = theta[j % 3] - theta[adj[j] % 3] + np.pi
-        U_1 = signc[j % 3] * sign[j] * paral_trans(alpha / 2)
+        U_1 = signc[j // 3] * sign[j] * paral_trans(alpha / 2)
         U = np.matmul(U, U_1)
         def_triangles -= 1
         j = prev_(adj[j])
@@ -131,6 +131,9 @@ class Manifold:
                     trace_th = np.cos(def_triangles * np.pi / 6)
                     sign_flip.append(np.sign(trace / trace_th))
 
+                sign_ = np.copy(sign_new)
+                signc_ = np.copy(signc_new)
+                traces = {}
                 ###### THIS IS THE IMPORTANT PART ######
                 # ss[x] is 1 if the plaquette corresp to edge x has correct sign, while it is -1 otherwise
                 ss = {}
@@ -140,22 +143,23 @@ class Manifold:
                     trace_th = np.cos(def_triangles * np.pi / 6)
 
                     if np.isclose(trace, 0):  ### problems when trace = 0
-                        s = np.sign(U[0, 1] / np.sin(def_triangles * np.pi / 6))
+                        s = np.sign(U[0, 1] / np.sin(def_triangles * np.pi / 6)) ### maybe should include minus sign
                     else:
                         s = np.sign(trace / trace_th)
                     ss[edge] = s
+                    traces[edge] = trace
 
                 # we enforce consistency relations ### check!
                 if j != n:
                     sign_new[k] *= ss[k]
                     sign_new[j] *= ss[i] * ss[j]
                     sign_new[i] *= ss[j] * ss[k] * ss[l]
-                    signc_new[i % 3] *= ss[i] * ss[j] * ss[k] * ss[l]
+                    signc_new[c1] *= ss[i] * ss[j] * ss[k] * ss[l]
 
-                    ### modify for case j == n
                     sign_new[m] = sign_new[k]
                     sign_new[l] = sign_new[j]
                     sign_new[n] = sign_new[i]
+
                 # the case j == n requires a distinct approach
                 else:
                     print("j == n")
@@ -187,18 +191,25 @@ class Manifold:
                         print(j==n)
                         t = 1
                 ss1 = {}
+                report = False
+                any_trace_zero = False
                 for edge in (i, j, k, l):
                     U, def_triangles = circle_vertex(adj_new, sign_new, signc_new, edge)
                     trace = np.trace(U) / 2
                     trace_th = np.cos(def_triangles * np.pi / 6)
 
                     if np.isclose(trace, 0):  ### problems when trace = 0
-                        s = 0.000001
+                        s = 0
+                        any_trace_zero = True
                     else:
                         s = np.sign(trace / trace_th)
                     ss1[edge] = s
                     if s != 1:
-                        print("s != 1")
+                        report = True
+                if report:
+                    print(ss1)
+                    print(f'{any_trace_zero = }')
+
 
                 # action variation
                 signs = (self.sign, self.signc)

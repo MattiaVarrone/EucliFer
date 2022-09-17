@@ -1,7 +1,7 @@
 import sys
 import unittest
 
-import scipy
+import scipy.linalg
 
 sys.path.append("../")
 from manifold_sampler.Triangulation import *
@@ -41,39 +41,40 @@ class TestPsi(unittest.TestCase):
             self.assertAlmostEqual(np.imag(product), 0)
 
     def test_plaquette(self):
-        N = 8
+        N = 20
         m = Manifold(N)
         strategy = ['gravity', 'spinor_free']
         # check if the fan triangulation has a consistent sign configuration
         for i in range(len(m.adj)):
             U, def_triangles = circle_vertex(m.adj, m.sign, m.signc, i)
             trace_plaquette = np.trace(U) / 2
-            self.assertAlmostEqual(trace_plaquette, np.cos(def_triangles*np.pi/6))
+            self.assertAlmostEqual(trace_plaquette, np.cos(def_triangles * np.pi / 6))
 
         # check if edge flips preserve the consistency of the sign configuration
-        for it in range(10*N):
+        for it in range(10 * N):
             m.random_update(beta=0.6, strategy=strategy)
             for i in range(len(m.adj)):
                 U, def_triangles = circle_vertex(m.adj, m.sign, m.signc, i)
-                trace_plaquette = np.trace(U)/2
-                #print(np.cos(def_triangles*np.pi/6))
-                self.assertAlmostEqual(trace_plaquette, np.cos(def_triangles*np.pi/6))
+                trace_plaquette = np.trace(U) / 2
+                self.assertAlmostEqual(trace_plaquette, np.cos(def_triangles * np.pi / 6))
             print(it)
+
     def test_gauge_sign(self):
         N = 16
         m = Manifold(N)
         strategy = ['gravity', 'spinor_free']
 
-        np.testing.assert_allclose(m.sign**2, np.ones(3*N))
+        np.testing.assert_allclose(m.sign ** 2, np.ones(3 * N))
         for edge in m.adj:
             self.assertEqual(m.sign[edge], m.sign[m.adj[edge]])
 
-        for _ in range(30*N):
+        for _ in range(30 * N):
             m.random_update(0.5, strategy)
             for edge in m.adj:
                 self.assertEqual(m.sign[edge], m.sign[m.adj[edge]])
-            np.testing.assert_allclose(m.sign**2, np.ones(3*N))
-            np.testing.assert_allclose(m.signc**2, np.ones(N))
+            np.testing.assert_allclose(m.sign ** 2, np.ones(3 * N))
+            np.testing.assert_allclose(m.signc ** 2, np.ones(N))
+
 
 if __name__ == '__main__':
     unittest.main()
