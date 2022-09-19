@@ -103,12 +103,16 @@ class Manifold:
             if 'spinor_free' in strategy:
                 # signs of parallel transporters are updated to ensure positive plaquette sign
                 # re-initialise signs
-                edges = (i, j, k, l, m, n)
-                for edge in edges:
-                    sign_new[edge] = 1
+                sign_new[i] = -self.sign[n]
+                sign_new[k] = -self.sign[m]
+                sign_new[m] = -sign_new[k]  # accounts for the case when j == n
+                sign_new[l] = -self.sign[i]
+                sign_new[j] = -sign_new[l]
 
 
                 ### THIS IS JUST USEFUL DATA
+                edges = (i, j, k, l, m, n)
+
                 sign0 = {}
                 for symbol, edge in zip(('i', 'j', 'k', 'l', 'm', 'n'), edges):
                     sign0[symbol] = self.sign[edge]
@@ -150,6 +154,7 @@ class Manifold:
                     traces[edge] = trace
 
                 # we enforce consistency relations ### check!
+                ### FIGURE OUT NEW RELATIONS AS WE IMPOSE ANTYSYMMETRY OF FLAGS, CHECK TRIANGLE FLAGS SEPARATELY
                 if j != n:
                     sign_new[k] *= ss[k]
                     sign_new[j] *= ss[i] * ss[j]

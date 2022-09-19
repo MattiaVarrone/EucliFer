@@ -59,7 +59,25 @@ class TestPsi(unittest.TestCase):
                 self.assertAlmostEqual(trace_plaquette, np.cos(def_triangles * np.pi / 6))
             print(it)
 
+
     def test_gauge_sign(self):
+        N = 10
+        m = Manifold(N)
+        strategy = ['gravity', 'spinor_free']
+
+        np.testing.assert_allclose(m.sign ** 2, np.ones(3 * N))
+        for edge in m.adj:
+            self.assertEqual(m.sign[edge], -m.sign[m.adj[edge]])
+
+        for _ in range(30 * N):
+            m.random_update(0.5, strategy)
+            for edge in m.adj:
+                self.assertEqual(m.sign[edge], -m.sign[m.adj[edge]])
+            np.testing.assert_allclose(m.sign ** 2, np.ones(3 * N))
+            np.testing.assert_allclose(m.signc ** 2, np.ones(N))
+
+
+    def test_gauge_sign_symm(self):
         N = 16
         m = Manifold(N)
         strategy = ['gravity', 'spinor_free']
