@@ -40,6 +40,22 @@ class TestPsi(unittest.TestCase):
             product = np.matmul(psi_bar, psi)
             self.assertAlmostEqual(np.imag(product), 0)
 
+class TestConnection(unittest.TestCase):
+
+    def test_transport_inverse(self):
+        N = 20
+        m = Manifold(N)
+        strategy = ['gravity', 'spinor_free']
+        Us = []
+        for i in range(len(m.adj)):
+            alpha = theta[i % 3] - theta[m.adj[i] % 3] + np.pi
+            U = paral_trans(alpha / 2)
+            Us.append(U)
+            if m.adj[i] < i:
+                I = np.matmul(Us[m.adj[i]], U)
+                print(I[0, 0])
+                # np.testing.assert_allclose(I, np.eye(2))
+
     def test_plaquette(self):
         N = 20
         m = Manifold(N)
@@ -73,23 +89,6 @@ class TestPsi(unittest.TestCase):
             m.random_update(0.5, strategy)
             for edge in m.adj:
                 self.assertEqual(m.sign[edge], -m.sign[m.adj[edge]])
-            np.testing.assert_allclose(m.sign ** 2, np.ones(3 * N))
-            np.testing.assert_allclose(m.signc ** 2, np.ones(N))
-
-
-    def test_gauge_sign_symm(self):
-        N = 16
-        m = Manifold(N)
-        strategy = ['gravity', 'spinor_free']
-
-        np.testing.assert_allclose(m.sign ** 2, np.ones(3 * N))
-        for edge in m.adj:
-            self.assertEqual(m.sign[edge], m.sign[m.adj[edge]])
-
-        for _ in range(30 * N):
-            m.random_update(0.5, strategy)
-            for edge in m.adj:
-                self.assertEqual(m.sign[edge], m.sign[m.adj[edge]])
             np.testing.assert_allclose(m.sign ** 2, np.ones(3 * N))
             np.testing.assert_allclose(m.signc ** 2, np.ones(N))
 
