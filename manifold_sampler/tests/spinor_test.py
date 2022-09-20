@@ -53,8 +53,7 @@ class TestConnection(unittest.TestCase):
             Us.append(U)
             if m.adj[i] < i:
                 I = np.matmul(Us[m.adj[i]], U)
-                print(I[0, 0])
-                # np.testing.assert_allclose(I, np.eye(2))
+                self.assertAlmostEqual(I[0,0], -1)  ### It is not what we want
 
     def test_plaquette(self):
         N = 20
