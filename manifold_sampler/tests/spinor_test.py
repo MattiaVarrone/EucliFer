@@ -12,7 +12,7 @@ beta = 0.5
 class TestGauge(unittest.TestCase):
 
     def test_adjacent(self):
-        N = 16
+        N = 14
         n_sweeps = 100
         m = Manifold(N)
         strategy = ['gravity', 'spinor_inter']
@@ -29,7 +29,7 @@ class TestGauge(unittest.TestCase):
 class TestPsi(unittest.TestCase):
 
     def test_mass_term_real(self):
-        N = 16
+        N = 14
         n_sweeps = 10
         m = Manifold(N)
         strategy = ['gravity', 'spinor_inter']
@@ -44,14 +44,14 @@ class TestPsi(unittest.TestCase):
 class TestConnection(unittest.TestCase):
 
     def test_transport_inverse(self):
-        N = 20
+        N = 22
         m = Manifold(N)
         strategy = ['gravity', 'spinor_free']
         As, Us = [], []
         for i in range(len(m.adj)):
             alpha = theta[i % 3] - theta[m.adj[i] % 3] + np.pi
             A = paral_trans(alpha / 2)
-            U = m.signc[i % 3] * m.sign[i] * A
+            U = m.sign[i] * A
             As.append(A), Us.append(U)
             if m.adj[i] < i:
                 I_ = np.matmul(As[m.adj[i]], A)
@@ -65,7 +65,7 @@ class TestConnection(unittest.TestCase):
         strategy = ['gravity', 'spinor_free']
         # check if the fan triangulation has a consistent sign configuration
         for i in range(len(m.adj)):
-            U, def_triangles = circle_vertex(m.adj, m.sign, m.signc, i)
+            U, def_triangles = circle_vertex(m.adj, m.sign, i)
             trace_plaquette = np.trace(U) / 2
             self.assertAlmostEqual(trace_plaquette, np.cos(def_triangles * np.pi / 6))
 
@@ -73,7 +73,7 @@ class TestConnection(unittest.TestCase):
         for it in range(46 * N):
             m.random_update(beta=0.6, strategy=strategy)
             for i in range(len(m.adj)):
-                U, def_triangles = circle_vertex(m.adj, m.sign, m.signc, i)
+                U, def_triangles = circle_vertex(m.adj, m.sign, i)
                 trace_plaquette = np.trace(U) / 2
                 self.assertAlmostEqual(trace_plaquette, np.cos(def_triangles * np.pi / 6))
             print(it)
@@ -92,7 +92,6 @@ class TestConnection(unittest.TestCase):
             for edge in m.adj:
                 self.assertEqual(m.sign[edge], -m.sign[m.adj[edge]])
             np.testing.assert_allclose(m.sign ** 2, np.ones(3 * N))
-            np.testing.assert_allclose(m.signc ** 2, np.ones(N))
 
 
 if __name__ == '__main__':

@@ -3,15 +3,15 @@ import numpy as np
 rng = np.random.default_rng()
 
 
-class OddFanException(Exception):
+class FanNotAllowedException(Exception):
     def __init__(self):
         print("n must be even")
 
 
 def fan_triangulation(n):
     """Generates a fan-shaped triangulation of even size n."""
-    if n % 2 == 1:
-        raise OddFanException
+    if n % 4 != 2:
+        raise FanNotAllowedException
     return np.array([[(i - 3) % (3 * n), i + 5, i + 4, (i + 6) % (3 * n), i + 2, i + 1] for i in range(0, 3 * n, 6)],
                     dtype=np.int32).flatten()
 

@@ -11,7 +11,7 @@ phi_range = 1
 sigma_const = 1
 
 # spinor field params
-K = 0.1
+K = 0
 psi_range = 0.7
 A_range = 1
 _mass = 1/2
@@ -67,15 +67,14 @@ def S_psi_inter(adj, psi, c, A):
     return S
 
 
-def S_psi_free(adj, psi, c, signs):
+def S_psi_free(adj, psi, c, sign):
     d_psi_x, d_psi_y = 0, 0
-    sign, signc = signs
 
     for i in range(3):
         j = 3 * c + i
         adj_c = adj[j] // 3
         alpha = theta[i] - theta[adj[j] % 3] + np.pi
-        U = signc[c] * sign[j] * paral_trans(alpha/2)            # factor of 1/2 accounts for spinor transport
+        U = sign[j] * paral_trans(alpha/2)            # factor of 1/2 accounts for spinor transport
                                                       # (I should store the possible values of U)
         d_psi = (np.matmul(U, psi[adj_c]) - psi[c])
         d_psi_x += d_psi * np.cos(theta[i])
@@ -83,7 +82,7 @@ def S_psi_free(adj, psi, c, signs):
 
     D_psi = np.matmul(id + gamma1, d_psi_x) / 2 + np.matmul(id + gamma2, d_psi_y) / 2
     psi_bar = np.matmul(eps, psi[c])      ### check how to calc psi_bar
-    S = - K * np.matmul(psi_bar, D_psi) + _mass * np.matmul(psi_bar, psi[c])
+    S = -K * np.matmul(psi_bar, D_psi) + _mass * np.matmul(psi_bar, psi[c])
     return S
 
 ###check action calculation thoroughly     ### check why psi tends to diverge

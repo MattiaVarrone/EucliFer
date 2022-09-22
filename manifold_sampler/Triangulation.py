@@ -5,15 +5,15 @@ rng = np.random.default_rng()
 
 
 # counter-clockwise circling of vertices to compute plaquettes and angle deficiency
-def circle_vertex(adj, sign, signc, i):
+def circle_vertex(adj, sign, i):
     alpha = theta[i % 3] - theta[adj[i] % 3] + np.pi
-    U = signc[i // 3] * sign[i] * paral_trans(alpha / 2)
+    U = sign[i] * paral_trans(alpha / 2)
     def_triangles = 6 - 1
 
     j = prev_(adj[i])
     while j != i:
         alpha = theta[j % 3] - theta[adj[j] % 3] + np.pi
-        U_1 = signc[j // 3] * sign[j] * paral_trans(alpha / 2)
+        U_1 = sign[j] * paral_trans(alpha / 2)
         U = np.matmul(U, U_1)
         def_triangles -= 1
         j = prev_(adj[j])
@@ -35,7 +35,6 @@ class Manifold:
         self.A = np.zeros(3 * N)  # variable gauge link
 
         self.sign = fan_sign(self.adj, comb)  # gauge link sign corresponding to edges
-        self.signc = np.ones(N)  # gauge link sign corresponding to centres
 
     def random_update(self, beta, strategy):
         if 'gravity' in strategy:
@@ -51,7 +50,7 @@ class Manifold:
             random_centre = rng.integers(0, self.N)
             self.psi = self.update_field(random_centre, self.psi, psi_range,
                                          action=S_psi_free, beta=beta, is_complex=False,
-                                         add_field=(self.sign, self.signc))
+                                         add_field=self.sign)
         if 'spinor_inter' in strategy:
             random_centre, random_side = rng.integers(0, self.N), rng.integers(0, len(self.adj))
             self.psi = self.update_field(random_centre, self.psi, psi_range,
@@ -70,7 +69,6 @@ class Manifold:
             adj_new = np.copy(self.adj)
             A_new = np.copy(self.A)
             sign_new = np.copy(self.sign)
-            signc_new = np.copy(self.signc)
 
             # (check p. 88 at https://hef.ru.nl/~tbudd/mct/mct_book.pdf for a labelling scheme)
             j = prev_(i)
@@ -123,25 +121,24 @@ class Manifold:
 
                 sign_flip0 = []
                 for edge in (m, k, n, i):
-                    U, def_triangles = circle_vertex(self.adj, self.sign, self.signc, edge)
+                    U, def_triangles = circle_vertex(self.adj, self.sign, edge)
                     trace = np.trace(U) / 2
                     trace_th = np.cos(def_triangles * np.pi / 6)
                     sign_flip0.append(np.sign(trace / trace_th))
 
                 sign_flip = []
                 for edge in (i, k, j, l):
-                    U, def_triangles = circle_vertex(adj_new, sign_new, signc_new, edge)
+                    U, def_triangles = circle_vertex(adj_new, sign_new, edge)
                     trace = np.trace(U) / 2
                     trace_th = np.cos(def_triangles * np.pi / 6)
                     sign_flip.append(np.sign(trace / trace_th))
 
                 sign_ = np.copy(sign_new)
-                signc_ = np.copy(signc_new)
                 traces = {}
                 ###### THIS IS THE IMPORTANT PART ######
                 ss = {}
                 for edge in (i, j, k):
-                    U, def_triangles = circle_vertex(adj_new, sign_new, signc_new, edge)
+                    U, def_triangles = circle_vertex(adj_new, sign_new, edge)
                     trace = np.trace(U) / 2
                     trace_th = np.cos(def_triangles * np.pi / 6)
 
@@ -163,7 +160,7 @@ class Manifold:
 
                 sign_flip1 = []
                 for edge in (i, k, j, l):
-                    U, def_triangles = circle_vertex(adj_new, sign_new, signc_new, edge)
+                    U, def_triangles = circle_vertex(adj_new, sign_new, edge)
                     trace = np.trace(U) / 2
                     trace_th = np.cos(def_triangles * np.pi / 6)
                     sign_flip1.append(np.sign(trace / trace_th))
@@ -171,7 +168,7 @@ class Manifold:
                 ss1 = {}
                 report = False
                 for edge in (i, j, k, l):
-                    U, def_triangles = circle_vertex(adj_new, sign_new, signc_new, edge)
+                    U, def_triangles = circle_vertex(adj_new, sign_new, edge)
                     trace = np.trace(U) / 2
                     trace_th = np.cos(def_triangles * np.pi / 6)
 
@@ -187,10 +184,8 @@ class Manifold:
 
 
                 # action variation
-                signs = (self.sign, self.signc)
-                signs_new = (sign_new, signc_new)
-                S_old = S_psi_free(self.adj, self.psi, c1, signs) + S_psi_free(self.adj, self.psi, c2, signs)
-                S_new = S_psi_free(adj_new, self.psi, c1, signs_new) + S_psi_free(adj_new, self.psi, c2, signs_new)
+                S_old = S_psi_free(self.adj, self.psi, c1, self.sign) + S_psi_free(self.adj, self.psi, c2, self.sign)
+                S_new = S_psi_free(adj_new, self.psi, c1, sign_new) + S_psi_free(adj_new, self.psi, c2, sign_new)
                 dS += S_new - S_old
             if 'spinor_inter' in strategy:
                 # gauge links corresponding to adjacent sides must be opposites
@@ -209,7 +204,6 @@ class Manifold:
                 self.adj = adj_new
                 self.A = A_new
                 self.sign = sign_new
-                self.signc = signc_new
 
     def update_field(self, c, field, field_range, action, beta, is_complex=False, add_field=None):
         field_new = np.copy(field)
@@ -262,7 +256,7 @@ class Manifold:
             if 'scalar' in strategy:
                 S += S_phi(self.adj, self.phi, c)
             if 'spinor_free' in strategy:
-                S += S_psi_free(self.adj, self.psi, c, (self.sign, self.signc))
+                S += S_psi_free(self.adj, self.psi, c, self.sign)
             if 'spinor_inter' in strategy:
                 S += S_psi_inter(self.adj, self.psi, c, self.A)
             if 'ising' in strategy:
