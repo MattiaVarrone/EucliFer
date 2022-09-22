@@ -11,7 +11,7 @@ phi_range = 1
 sigma_const = 1
 
 # spinor field params
-K = 1
+K = 0.1
 psi_range = 0.7
 A_range = 1
 _mass = 1/2
@@ -63,7 +63,7 @@ def S_psi_inter(adj, psi, c, A):
 
     D_psi = np.matmul(id + gamma1, d_psi_x) / 2 + np.matmul(id + gamma2, d_psi_y) / 2
     psi_bar = np.conj(np.matmul(psi[c], eps))  ### check how to calc psi_bar
-    S = - K * np.imag(np.matmul(psi_bar, D_psi)) + _mass * np.real(np.matmul(psi_bar, psi[c]))
+    S = K * np.imag(np.matmul(psi_bar, D_psi)) + _mass * np.real(np.matmul(psi_bar, psi[c]))
     return S
 
 

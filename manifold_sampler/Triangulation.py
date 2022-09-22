@@ -24,7 +24,7 @@ def circle_vertex(adj, sign, signc, i):
 class Manifold:
     # Simplicial Manifold: created by piecing triangles together with the topology of a sphere
 
-    def __init__(self, N):
+    def __init__(self, N, comb=[0, 1, 2]):
         self.N = N
         self.adj = fan_triangulation(N)
 
@@ -34,7 +34,7 @@ class Manifold:
         self.psi = np.zeros((N, 2), dtype=np.complex_)  ### should use majorana basis eventually
         self.A = np.zeros(3 * N)  # variable gauge link
 
-        self.sign = fan_sign(self.adj)  # gauge link sign corresponding to edges
+        self.sign = fan_sign(self.adj, comb)  # gauge link sign corresponding to edges
         self.signc = np.ones(N)  # gauge link sign corresponding to centres
 
     def random_update(self, beta, strategy):
@@ -139,43 +139,21 @@ class Manifold:
                 signc_ = np.copy(signc_new)
                 traces = {}
                 ###### THIS IS THE IMPORTANT PART ######
-                # ss[x] is 1 if the plaquette corresp to edge x has correct sign, while it is -1 otherwise
                 ss = {}
-                for edge in (i, j, k, l):
+                for edge in (i, j, k):
                     U, def_triangles = circle_vertex(adj_new, sign_new, signc_new, edge)
                     trace = np.trace(U) / 2
                     trace_th = np.cos(def_triangles * np.pi / 6)
 
                     if np.isclose(trace, 0):  ### problems when trace = 0
-                        s = np.sign(U[0, 1] / np.sin(def_triangles * np.pi / 6)) ### maybe should include minus sign
+                        s = np.sign(U[0, 1] / np.sin(def_triangles * np.pi / 6))  ### maybe should include minus sign
                     else:
                         s = np.sign(trace / trace_th)
                     ss[edge] = s
                     traces[edge] = trace
 
-                # we enforce consistency relations ### check!
-                ### FIGURE OUT NEW RELATIONS AS WE IMPOSE ANTYSYMMETRY OF FLAGS, CHECK TRIANGLE FLAGS SEPARATELY
-                if j != n:
-                    sign_new[k] *= ss[k]
-                    sign_new[j] *= ss[i] * ss[j]
-                    sign_new[i] *= ss[j] * ss[k] * ss[l]
-                    signc_new[c1] *= ss[i] * ss[j] * ss[k] * ss[l]
-
-                    sign_new[m] = sign_new[k]
-                    sign_new[l] = sign_new[j]
-                    sign_new[n] = sign_new[i]
-
-                # the case j == n requires a distinct approach
-                else:
-                    print("j == n")
-                    g = next_(i)
-                    h = next_(k)
-                    sign_new[g] *= ss[i]
-                    sign_new[h] *= ss[j]
-                    sign_new[adj_new[g]] = sign_new[g]
-                    sign_new[adj_new[h]] = sign_new[h]
-
-                ###### END OF IMPORTANT PART ######
+                    sign_new[edge] *= s
+                    sign_new[adj_new[edge]] = -sign_new[edge]
 
 
                 ### MORE USEFUL DATA
@@ -190,14 +168,8 @@ class Manifold:
                     trace_th = np.cos(def_triangles * np.pi / 6)
                     sign_flip1.append(np.sign(trace / trace_th))
 
-                for edge in range(len(adj_new)):
-                    if sign_new[edge] != sign_new[adj_new[edge]]:
-                        print("error")
-                        print(j==n)
-                        t = 1
                 ss1 = {}
                 report = False
-                any_trace_zero = False
                 for edge in (i, j, k, l):
                     U, def_triangles = circle_vertex(adj_new, sign_new, signc_new, edge)
                     trace = np.trace(U) / 2
@@ -205,7 +177,6 @@ class Manifold:
 
                     if np.isclose(trace, 0):  ### problems when trace = 0
                         s = 0
-                        any_trace_zero = True
                     else:
                         s = np.sign(trace / trace_th)
                     ss1[edge] = s
@@ -213,7 +184,6 @@ class Manifold:
                         report = True
                 if report:
                     print(ss1)
-                    print(f'{any_trace_zero = }')
 
 
                 # action variation
@@ -298,3 +268,44 @@ class Manifold:
             if 'ising' in strategy:
                 S += S_sigma(self.adj, self.sigma, c)
         return S
+
+
+"""
+# ss[x] is 1 if the plaquette corresp to edge x has correct sign, while it is -1 otherwise
+                ss = {}
+                for edge in (i, j, k, l):
+                    U, def_triangles = circle_vertex(adj_new, sign_new, signc_new, edge)
+                    trace = np.trace(U) / 2
+                    trace_th = np.cos(def_triangles * np.pi / 6)
+
+                    if np.isclose(trace, 0):  ### problems when trace = 0
+                        s = np.sign(U[0, 1] / np.sin(def_triangles * np.pi / 6)) ### maybe should include minus sign
+                    else:
+                        s = np.sign(trace / trace_th)
+                    ss[edge] = s
+                    traces[edge] = trace
+
+                # we enforce consistency relations ### check!
+                ### FIGURE OUT NEW RELATIONS AS WE IMPOSE ANTYSYMMETRY OF FLAGS, CHECK TRIANGLE FLAGS SEPARATELY
+                if j != n:
+                    sign_new[k] *= ss[k]
+                    sign_new[j] *= ss[i] * ss[j]
+                    sign_new[i] *= ss[j] * ss[k] * ss[l]
+                    signc_new[c1] *= ss[i] * ss[j] * ss[k] * ss[l]
+
+                    sign_new[m] = sign_new[k]
+                    sign_new[l] = sign_new[j]
+                    sign_new[n] = sign_new[i]
+
+                # the case j == n requires a distinct approach
+                else:
+                    print("j == n")
+                    g = next_(i)
+                    h = next_(k)
+                    sign_new[g] *= ss[i]
+                    sign_new[h] *= ss[j]
+                    sign_new[adj_new[g]] = sign_new[g]
+                    sign_new[adj_new[h]] = sign_new[h]
+
+                ###### END OF IMPORTANT PART ######
+"""

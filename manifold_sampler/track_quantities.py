@@ -2,9 +2,9 @@ import numpy as np
 
 from Analysis_utils import *
 
-N = 16
+N = 14
 beta = 0.63
-strategy = ['gravity', 'scalar']
+strategy = ['gravity', 'spinor_free']
 
 l = Manifold(N)
 
