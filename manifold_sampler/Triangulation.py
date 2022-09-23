@@ -107,36 +107,6 @@ class Manifold:
                 sign_new[l] = -self.sign[i]
                 sign_new[j] = -sign_new[l]
 
-
-                ### THIS IS JUST USEFUL DATA
-                edges = (i, j, k, l, m, n)
-
-                sign0 = {}
-                for symbol, edge in zip(('i', 'j', 'k', 'l', 'm', 'n'), edges):
-                    sign0[symbol] = self.sign[edge]
-
-                sign = {}
-                for symbol, edge in zip(('i', 'j', 'k', 'l', 'm', 'n'), edges):
-                    sign[symbol] = sign_new[edge]
-
-                sign_flip0 = []
-                for edge in (m, k, n, i):
-                    U, def_triangles = circle_vertex(self.adj, self.sign, edge)
-                    trace = np.trace(U) / 2
-                    trace_th = np.cos(def_triangles * np.pi / 6)
-                    sign_flip0.append(np.sign(trace / trace_th))
-
-                sign_flip = []
-                for edge in (i, k, j, l):
-                    U, def_triangles = circle_vertex(adj_new, sign_new, edge)
-                    trace = np.trace(U) / 2
-                    trace_th = np.cos(def_triangles * np.pi / 6)
-                    sign_flip.append(np.sign(trace / trace_th))
-
-                sign_ = np.copy(sign_new)
-                traces = {}
-                ###### THIS IS THE IMPORTANT PART ######
-                ss = {}
                 for edge in (i, j, k):
                     U, def_triangles = circle_vertex(adj_new, sign_new, edge)
                     trace = np.trace(U) / 2
@@ -146,42 +116,9 @@ class Manifold:
                         s = np.sign(U[0, 1] / np.sin(def_triangles * np.pi / 6))  ### maybe should include minus sign
                     else:
                         s = np.sign(trace / trace_th)
-                    ss[edge] = s
-                    traces[edge] = trace
 
                     sign_new[edge] *= s
                     sign_new[adj_new[edge]] = -sign_new[edge]
-
-
-                ### MORE USEFUL DATA
-                sign1 = {}
-                for symbol, edge in zip(('i', 'j', 'k', 'l', 'm', 'n'), (i, j, k, l, m, n)):
-                    sign1[symbol] = sign_new[edge]
-
-                sign_flip1 = []
-                for edge in (i, k, j, l):
-                    U, def_triangles = circle_vertex(adj_new, sign_new, edge)
-                    trace = np.trace(U) / 2
-                    trace_th = np.cos(def_triangles * np.pi / 6)
-                    sign_flip1.append(np.sign(trace / trace_th))
-
-                ss1 = {}
-                report = False
-                for edge in (i, j, k, l):
-                    U, def_triangles = circle_vertex(adj_new, sign_new, edge)
-                    trace = np.trace(U) / 2
-                    trace_th = np.cos(def_triangles * np.pi / 6)
-
-                    if np.isclose(trace, 0):  ### problems when trace = 0
-                        s = 0
-                    else:
-                        s = np.sign(trace / trace_th)
-                    ss1[edge] = s
-                    if s != 1:
-                        report = True
-                if report:
-                    print(ss1)
-
 
                 # action variation
                 S_old = S_psi_free(self.adj, self.psi, c1, self.sign) + S_psi_free(self.adj, self.psi, c2, self.sign)
@@ -262,44 +199,3 @@ class Manifold:
             if 'ising' in strategy:
                 S += S_sigma(self.adj, self.sigma, c)
         return S
-
-
-"""
-# ss[x] is 1 if the plaquette corresp to edge x has correct sign, while it is -1 otherwise
-                ss = {}
-                for edge in (i, j, k, l):
-                    U, def_triangles = circle_vertex(adj_new, sign_new, signc_new, edge)
-                    trace = np.trace(U) / 2
-                    trace_th = np.cos(def_triangles * np.pi / 6)
-
-                    if np.isclose(trace, 0):  ### problems when trace = 0
-                        s = np.sign(U[0, 1] / np.sin(def_triangles * np.pi / 6)) ### maybe should include minus sign
-                    else:
-                        s = np.sign(trace / trace_th)
-                    ss[edge] = s
-                    traces[edge] = trace
-
-                # we enforce consistency relations ### check!
-                ### FIGURE OUT NEW RELATIONS AS WE IMPOSE ANTYSYMMETRY OF FLAGS, CHECK TRIANGLE FLAGS SEPARATELY
-                if j != n:
-                    sign_new[k] *= ss[k]
-                    sign_new[j] *= ss[i] * ss[j]
-                    sign_new[i] *= ss[j] * ss[k] * ss[l]
-                    signc_new[c1] *= ss[i] * ss[j] * ss[k] * ss[l]
-
-                    sign_new[m] = sign_new[k]
-                    sign_new[l] = sign_new[j]
-                    sign_new[n] = sign_new[i]
-
-                # the case j == n requires a distinct approach
-                else:
-                    print("j == n")
-                    g = next_(i)
-                    h = next_(k)
-                    sign_new[g] *= ss[i]
-                    sign_new[h] *= ss[j]
-                    sign_new[adj_new[g]] = sign_new[g]
-                    sign_new[adj_new[h]] = sign_new[h]
-
-                ###### END OF IMPORTANT PART ######
-"""

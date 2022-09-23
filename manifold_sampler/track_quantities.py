@@ -8,7 +8,7 @@ strategy = ['gravity', 'spinor_free']
 
 l = Manifold(N)
 
-range = range(50)
+range = range(20)
 Ss = []
 Phis = []
 Ms = []

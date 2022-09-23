@@ -11,7 +11,7 @@ phi_range = 1
 sigma_const = 1
 
 # spinor field params
-K = 0
+K = 0.3746
 psi_range = 0.7
 A_range = 1
 _mass = 1/2
@@ -82,8 +82,8 @@ def S_psi_free(adj, psi, c, sign):
 
     D_psi = np.matmul(id + gamma1, d_psi_x) / 2 + np.matmul(id + gamma2, d_psi_y) / 2
     psi_bar = np.matmul(eps, psi[c])      ### check how to calc psi_bar
-    S = -K * np.matmul(psi_bar, D_psi) + _mass * np.matmul(psi_bar, psi[c])
-    return S
+    S = -K * np.matmul(psi_bar, D_psi) + _mass * 2 * psi[c, 0] * psi[c, 1]
+    return np.real(S)
 
 ###check action calculation thoroughly     ### check why psi tends to diverge
 ### check how to obtain real action: take imag() or use hermit conjugate
