@@ -8,11 +8,13 @@ strategy = ['gravity', 'spinor_free']
 
 l = Manifold(N)
 
-range = range(20)
+range = range(50)
 Ss = []
 Phis = []
 Ms = []
 Psis = []
+
+#_K = 0
 
 fig, ax = plt.subplots(4)
 for _ in range:

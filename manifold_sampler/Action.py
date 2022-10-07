@@ -11,12 +11,12 @@ phi_range = 1
 sigma_const = 1
 
 # spinor field params
-K = 0.3746
+_K = 1
 psi_range = 0.7
 A_range = 1
 _mass = 1/2
 
-# parallel transport of free fermions
+# parallel transport of free spinors
 theta = [np.pi, np.pi / 3, 5 * np.pi / 3]
 
 # dirac gamma matrices
@@ -48,6 +48,45 @@ def paral_trans(A):  ### check how to calculate parallel transporter
     return U
 
 
+def S_spinor(adj, sign, A=None):
+    D = Dirac_operator(adj, sign)
+    logdet = np.linalg.slogdet(D)
+    if logdet[0] < 0:
+        print("det sign = -1")
+    return logdet[1]
+
+
+def Dirac_operator(adj, sign, A=None):
+    N = len(adj) // 3
+    D = np.zeros(shape=(2 * N, 2 * N))
+    if A is None:
+        A = np.zeros(3*N)
+
+    for c in range(N):
+        i = 2 * c
+        D[i, i + 1] = _mass
+        D[i + 1, i] = -_mass
+        for k in range(3):
+            edge = 3 * c + k
+            adj_c = adj[edge] // 3
+            j = adj_c * 2
+
+            alpha = theta[k] - theta[adj[edge] % 3] + np.pi
+            U = sign[edge] * paral_trans((alpha + A[edge]) / 2)  # factor of 1/2 accounts for spinor transport
+            H_0 = 1/2 * np.cos(theta[k]) * np.matmul(id + gamma1, U) + 1/2 * np.sin(theta[k]) * np.matmul(id + gamma2, U) - id
+            H = -_K * np.matmul(eps, H_0)
+
+            for a in range(2):
+                for b in range(2):
+                    D[i+a, j+b] = H[a, b]
+    return D
+
+### check action calculation thoroughly     ### check why psi tends to diverge
+### check how to obtain real action: take imag() or use hermit conjugate
+
+
+### Possibly obsolete
+
 def S_psi_inter(adj, psi, c, A):
     d_psi_x, d_psi_y = 0, 0
 
@@ -63,11 +102,11 @@ def S_psi_inter(adj, psi, c, A):
 
     D_psi = np.matmul(id + gamma1, d_psi_x) / 2 + np.matmul(id + gamma2, d_psi_y) / 2
     psi_bar = np.conj(np.matmul(psi[c], eps))  ### check how to calc psi_bar
-    S = K * np.imag(np.matmul(psi_bar, D_psi)) + _mass * np.real(np.matmul(psi_bar, psi[c]))
+    S = _K * np.imag(np.matmul(psi_bar, D_psi)) + _mass * np.real(np.matmul(psi_bar, psi[c]))
     return S
 
 
-def S_psi_free(adj, psi, c, sign):
+def S_psi_free_boson(adj, psi, c, sign):
     d_psi_x, d_psi_y = 0, 0
 
     for i in range(3):
@@ -82,8 +121,5 @@ def S_psi_free(adj, psi, c, sign):
 
     D_psi = np.matmul(id + gamma1, d_psi_x) / 2 + np.matmul(id + gamma2, d_psi_y) / 2
     psi_bar = np.matmul(eps, psi[c])      ### check how to calc psi_bar
-    S = -K * np.matmul(psi_bar, D_psi) + _mass * 2 * psi[c, 0] * psi[c, 1]
+    S = -_K * np.matmul(psi_bar, D_psi) + _mass * 2 * psi[c, 0] * psi[c, 1]
     return np.real(S)
-
-###check action calculation thoroughly     ### check why psi tends to diverge
-### check how to obtain real action: take imag() or use hermit conjugate

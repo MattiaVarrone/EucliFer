@@ -1,13 +1,15 @@
 from Analysis_utils import *
 
-N = 12 ### needs to be multiple of 4
-n_sweeps = 1
+N = 6 ### needs to be multiple of 4
+n_sweeps = 100
 
 beta = 0.63
-K = 0
 l = Manifold(N)
-strategy = ['gravity', 'spinor_free']
-print("first")
-l.flip_edge(1, beta, strategy)
+D = Dirac_operator(l.adj, l.sign)
 
-print("finished")
+a = np.copy(l.adj)
+l.sweep(n_sweeps, beta, ["gravity", "spinor_free"])
+D1 = Dirac_operator(l.adj, l.sign)
+
+print(np.linalg.slogdet(D))
+print(np.linalg.slogdet(D1))

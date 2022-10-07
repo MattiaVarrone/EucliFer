@@ -5,7 +5,7 @@ rng = np.random.default_rng()
 
 class FanNotAllowedException(Exception):
     def __init__(self):
-        print("n must be even")
+        print("n % 4 must equal 2")
 
 
 def fan_triangulation(n):

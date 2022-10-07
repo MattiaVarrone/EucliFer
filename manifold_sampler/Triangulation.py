@@ -46,11 +46,6 @@ class Manifold:
         if 'ising' in strategy:
             random_centre = rng.integers(0, self.N)
             self.update_spin(random_centre, beta)
-        if 'spinor_free' in strategy:
-            random_centre = rng.integers(0, self.N)
-            self.psi = self.update_field(random_centre, self.psi, psi_range,
-                                         action=S_psi_free, beta=beta, is_complex=False,
-                                         add_field=self.sign)
         if 'spinor_inter' in strategy:
             random_centre, random_side = rng.integers(0, self.N), rng.integers(0, len(self.adj))
             self.psi = self.update_field(random_centre, self.psi, psi_range,
@@ -121,8 +116,8 @@ class Manifold:
                     sign_new[adj_new[edge]] = -sign_new[edge]
 
                 # action variation
-                S_old = S_psi_free(self.adj, self.psi, c1, self.sign) + S_psi_free(self.adj, self.psi, c2, self.sign)
-                S_new = S_psi_free(adj_new, self.psi, c1, sign_new) + S_psi_free(adj_new, self.psi, c2, sign_new)
+                S_old = S_spinor(self.adj, self.sign)
+                S_new = S_spinor(adj_new, sign_new)
                 dS += S_new - S_old
             if 'spinor_inter' in strategy:
                 # gauge links corresponding to adjacent sides must be opposites
@@ -193,7 +188,7 @@ class Manifold:
             if 'scalar' in strategy:
                 S += S_phi(self.adj, self.phi, c)
             if 'spinor_free' in strategy:
-                S += S_psi_free(self.adj, self.psi, c, self.sign)
+                S += S_spinor(self.adj, self.psi, c, self.sign)
             if 'spinor_inter' in strategy:
                 S += S_psi_inter(self.adj, self.psi, c, self.A)
             if 'ising' in strategy:
