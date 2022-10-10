@@ -31,10 +31,9 @@ class Manifold:
         self.phi = np.zeros(N)
         self.sigma = np.ones(N)
 
-        self.psi = np.zeros((N, 2), dtype=np.complex_)  ### should use majorana basis eventually
         self.A = np.zeros(3 * N)  # variable gauge link
-
         self.sign = fan_sign(self.adj, comb)  # gauge link sign corresponding to edges
+        self.D = Dirac_operator(self.adj, self.sign, A=self.A)
 
     def random_update(self, beta, strategy):
         if 'gravity' in strategy:
@@ -47,10 +46,8 @@ class Manifold:
             random_centre = rng.integers(0, self.N)
             self.update_spin(random_centre, beta)
         if 'spinor_inter' in strategy:
-            random_centre, random_side = rng.integers(0, self.N), rng.integers(0, len(self.adj))
-            self.psi = self.update_field(random_centre, self.psi, psi_range,
-                                         action=S_psi_inter, beta=beta, is_complex=True, add_field=self.A)
-            self.A = self.update_gauge(random_side, self.A, A_range, action=S_psi_inter, beta=beta, matt_field=self.psi)
+            random_side = rng.integers(0, len(self.adj))
+            self.A = self.update_gauge(random_side, self.A, A_range, action=S_psi_inter, beta=beta, matt_field=self.psi)  ### TO BE CHANGED
 
     def sweep(self, n_sweeps, beta, strategy):
         n = n_sweeps * 3 * self.N
@@ -64,6 +61,7 @@ class Manifold:
             adj_new = np.copy(self.adj)
             A_new = np.copy(self.A)
             sign_new = np.copy(self.sign)
+            D_new = np.copy(self.D)
 
             # (check p. 88 at https://hef.ru.nl/~tbudd/mct/mct_book.pdf for a labelling scheme)
             j = prev_(i)
@@ -115,9 +113,11 @@ class Manifold:
                     sign_new[edge] *= s
                     sign_new[adj_new[edge]] = -sign_new[edge]
 
+                D_new = Dirac_operator(adj_new, sign_new, D=D_new, triangles=(c1, c2), A=A_new)
+
                 # action variation
-                S_old = S_spinor(self.adj, self.sign)
-                S_new = S_spinor(adj_new, sign_new)
+                S_old = S_spinor(self.D)
+                S_new = S_spinor(D_new)
                 dS += S_new - S_old
             if 'spinor_inter' in strategy:
                 # gauge links corresponding to adjacent sides must be opposites
@@ -136,6 +136,7 @@ class Manifold:
                 self.adj = adj_new
                 self.A = A_new
                 self.sign = sign_new
+                self.D = D_new
 
     def update_field(self, c, field, field_range, action, beta, is_complex=False, add_field=None):
         field_new = np.copy(field)

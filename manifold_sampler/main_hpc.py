@@ -1,13 +1,14 @@
+import csv
 import os
 from Analysis_utils import *
 from scipy.interpolate import CubicSpline
 
 # params for the lattice-matter system and sampling
-sizes = [(int(i) // 4) * 4 + 2 for i in np.geomspace(30, 100, 8)]
+sizes = [(int(i) // 4) * 4 + 2 for i in np.geomspace(50, 150, 8)]
 beta = 0.63
 matter = 'spinor_free'
 strategy = ['gravity', matter]
-eq_sweeps, meas_sweeps, n_measurements = 200, 4, 200
+eq_sweeps, meas_sweeps, n_measurements = 100, 1, 100
 
 # getting the array index of the hpc batch
 array_id = os.getenv('SLURM_ARRAY_TASK_ID')
@@ -16,6 +17,7 @@ if array_id is not None:
 
 
 # create a distance profile for different lattice sizes
+@timebudget
 def profile_maker(size):
     return make_profile(size, beta, strategy, eq_sweeps, meas_sweeps, n_measurements)
 
@@ -78,10 +80,15 @@ if __name__ == '__main__':
     print('Number of cores: ' + str(mp.cpu_count()))
     print(f'{array_id = }')
 
+    print("\nwithout spline fit:")
+    print(f'{d_H_ws = }' + '+/-' + f'{d_H_err_ws = }')
+    print(f'{a_ws = }' + '+/-' + f'{a_err_ws = }')
+
     print("\nwith spline fit:")
     print(f'{d_H = }' + '+/-' + f'{d_H_err = }')
     print(f'{a = }' + '+/-' + f'{a_err = }')
 
-    print("\nwithout spline fit:")
-    print(f'{d_H_ws = }' + '+/-' + f'{d_H_err_ws = }')
-    print(f'{a_ws = }' + '+/-' + f'{a_err_ws = }')
+    if matter == 'spinor_free':
+        with open(r"data/haussdorf_spinor_free.csv", "w") as f:
+            writer = csv.writer(f)
+            writer.writerow([d_H_ws, d_H_err_ws, d_H, d_H_err])

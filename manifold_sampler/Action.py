@@ -48,19 +48,21 @@ def paral_trans(A):  ### check how to calculate parallel transporter
     return U
 
 
-def S_spinor(adj, sign, A=None):
-    D = Dirac_operator(adj, sign)
+def S_spinor(D):
     logdet = np.linalg.slogdet(D)
     return 1/2 * logdet[1]
 
 
-def Dirac_operator(adj, sign, A=None):
+def Dirac_operator(adj, sign, D=None, triangles=None, A=None):
     N = len(adj) // 3
-    D = np.zeros(shape=(2 * N, 2 * N))
+    if D is None:
+        D = np.zeros(shape=(2 * N, 2 * N))
+    if triangles is None:
+        triangles = range(N)
     if A is None:
         A = np.zeros(3*N)
 
-    for c in range(N):
+    for c in triangles:
         i = 2 * c
         D[i, i + 1] = _mass
         D[i + 1, i] = -_mass
