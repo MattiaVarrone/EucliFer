@@ -2,6 +2,7 @@ import sys
 import unittest
 
 import scipy.linalg
+from timebudget import timebudget
 
 sys.path.append("../")
 from manifold_sampler.Triangulation import *
@@ -10,35 +11,20 @@ beta = 0.5
 
 
 class TestGauge(unittest.TestCase):
-
+    @timebudget
     def test_adjacent(self):
-        N = 14
-        n_sweeps = 100
+        N = 102
+        n_sweeps = 10
         m = Manifold(N)
         strategy = ['gravity', 'spinor_inter']
         for _ in range(2):
             m.sweep(n_sweeps, beta, strategy)
             for i in range(len(m.adj)):
-                self.assertEqual(m.A[i], -m.A[m.adj[i]])  ### RARELY DOES NOT WORK # fixed now
+                self.assertEqual(m.A[i], -m.A[m.adj[i]])
 
     def test_paral_trans(self):
         A = 2
         np.testing.assert_allclose(scipy.linalg.expm(A * eps), paral_trans(A))
-
-
-class TestPsi(unittest.TestCase):
-
-    def test_mass_term_real(self):
-        N = 14
-        n_sweeps = 10
-        m = Manifold(N)
-        strategy = ['gravity', 'spinor_inter']
-        m.sweep(n_sweeps, beta, strategy)
-        for c in range(N):
-            psi = m.psi[c]
-            psi_bar = np.conj(np.matmul(gamma1, psi))
-            product = np.matmul(psi_bar, psi)
-            self.assertAlmostEqual(np.imag(product), 0)
 
 
 class TestConnection(unittest.TestCase):
@@ -70,13 +56,12 @@ class TestConnection(unittest.TestCase):
             self.assertAlmostEqual(trace_plaquette, np.cos(def_triangles * np.pi / 6))
 
         # check if edge flips preserve the consistency of the sign configuration
-        for it in range(46 * N):
+        for _ in range(10 * N):
             m.random_update(beta=0.6, strategy=strategy)
             for i in range(len(m.adj)):
                 U, def_triangles = circle_vertex(m.adj, m.sign, i)
                 trace_plaquette = np.trace(U) / 2
                 self.assertAlmostEqual(trace_plaquette, np.cos(def_triangles * np.pi / 6))
-            print(it)
 
     def test_gauge_sign(self):
         N = 10
@@ -92,6 +77,26 @@ class TestConnection(unittest.TestCase):
             for edge in m.adj:
                 self.assertEqual(m.sign[edge], -m.sign[m.adj[edge]])
             np.testing.assert_allclose(m.sign ** 2, np.ones(3 * N))
+
+
+class TestAction(unittest.TestCase):
+    @timebudget
+    def test_dirac_determinant_sign(self):
+        N = 102
+        m = Manifold(N)
+        strategy = ['gravity', 'spinor_free']
+
+        # check if the fan triangulation has a consistent dirac determinant sign
+        D = Dirac_operator(m.adj, m.sign)
+        det_sign = np.linalg.slogdet(D)[0]
+        self.assertEqual(det_sign, 1)
+
+        # check if edge flips preserve the consistency of the dirac determinant sign
+        for it in range(10 * N):
+            m.random_update(beta=0.6, strategy=strategy)
+            D = Dirac_operator(m.adj, m.sign)
+            det_sign = np.linalg.slogdet(D)[0]
+            self.assertEqual(det_sign, 1)
 
 
 if __name__ == '__main__':

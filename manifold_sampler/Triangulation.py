@@ -188,7 +188,7 @@ class Manifold:
             if 'scalar' in strategy:
                 S += S_phi(self.adj, self.phi, c)
             if 'spinor_free' in strategy:
-                S += S_spinor(self.adj, self.psi, c, self.sign)
+                S += S_spinor(self.adj, self.sign)
             if 'spinor_inter' in strategy:
                 S += S_psi_inter(self.adj, self.psi, c, self.A)
             if 'ising' in strategy:

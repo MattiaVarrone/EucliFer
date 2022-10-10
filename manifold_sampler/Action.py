@@ -11,7 +11,7 @@ phi_range = 1
 sigma_const = 1
 
 # spinor field params
-_K = 1
+_K = 0.3746166
 psi_range = 0.7
 A_range = 1
 _mass = 1/2
@@ -51,9 +51,7 @@ def paral_trans(A):  ### check how to calculate parallel transporter
 def S_spinor(adj, sign, A=None):
     D = Dirac_operator(adj, sign)
     logdet = np.linalg.slogdet(D)
-    if logdet[0] < 0:
-        print("det sign = -1")
-    return logdet[1]
+    return 1/2 * logdet[1]
 
 
 def Dirac_operator(adj, sign, A=None):
@@ -73,7 +71,7 @@ def Dirac_operator(adj, sign, A=None):
 
             alpha = theta[k] - theta[adj[edge] % 3] + np.pi
             U = sign[edge] * paral_trans((alpha + A[edge]) / 2)  # factor of 1/2 accounts for spinor transport
-            H_0 = 1/2 * np.cos(theta[k]) * np.matmul(id + gamma1, U) + 1/2 * np.sin(theta[k]) * np.matmul(id + gamma2, U) - id
+            H_0 = 1/2 * np.cos(theta[k]) * np.matmul(id + gamma1, U) - 1/2 * np.sin(theta[k]) * np.matmul(id + gamma2, U) - id
             H = -_K * np.matmul(eps, H_0)
 
             for a in range(2):
