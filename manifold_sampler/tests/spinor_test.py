@@ -16,7 +16,7 @@ class TestGauge(unittest.TestCase):
         N = 102
         n_sweeps = 10
         m = Manifold(N)
-        strategy = ['gravity', 'spinor_inter']
+        strategy = ['gravity', 'spinor_free']
         for _ in range(2):
             m.sweep(n_sweeps, beta, strategy)
             for i in range(len(m.adj)):
@@ -82,21 +82,36 @@ class TestConnection(unittest.TestCase):
 class TestAction(unittest.TestCase):
     @timebudget
     def test_dirac_determinant_sign(self):
-        N = 102
+        N = 42
         m = Manifold(N)
         strategy = ['gravity', 'spinor_free']
 
         # check if the fan triangulation has a consistent dirac determinant sign
-        D = Dirac_operator(m.adj, m.sign)
-        det_sign = np.linalg.slogdet(D)[0]
+        det_sign = np.linalg.slogdet(m.D)[0]
         self.assertEqual(det_sign, 1)
 
         # check if edge flips preserve the consistency of the dirac determinant sign
         for it in range(10 * N):
             m.random_update(beta=0.6, strategy=strategy)
-            D = Dirac_operator(m.adj, m.sign)
-            det_sign = np.linalg.slogdet(D)[0]
-            self.assertEqual(det_sign, 1)
+            det_sign = np.linalg.slogdet(m.D)[0]
+            self.assertEqual(1, det_sign)
+            print(it)
+
+    def test_dirac_operator_antisymm(self):
+        N = 42
+        m = Manifold(N)
+        strategy = ['gravity', 'spinor_free']
+
+        # check if the fan triangulation has a consistent dirac determinant sign
+        D_sym = (m.D + m.D.T)/2
+        np.testing.assert_allclose(D_sym, np.zeros(m.D.shape))
+
+        # check if edge flips preserve the consistency of the dirac determinant sign
+        for it in range(10 * N):
+            m.random_update(beta=0.6, strategy=strategy)
+            D_sym = (m.D + m.D.T) / 2
+            np.testing.assert_allclose(D_sym, np.zeros(m.D.shape))
+            print(it)
 
 
 if __name__ == '__main__':

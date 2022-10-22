@@ -105,8 +105,8 @@ class Manifold:
                     trace = np.trace(U) / 2
                     trace_th = np.cos(def_triangles * np.pi / 6)
 
-                    if np.isclose(trace, 0):  ### problems when trace = 0
-                        s = np.sign(U[0, 1] / np.sin(def_triangles * np.pi / 6))  ### maybe should include minus sign
+                    if np.isclose(trace, 0):  # determines sign when trace = 0
+                        s = np.sign(U[0, 1] / np.sin(def_triangles * np.pi / 6))
                     else:
                         s = np.sign(trace / trace_th)
 

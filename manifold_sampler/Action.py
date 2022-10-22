@@ -55,6 +55,7 @@ def S_spinor(D):
 
 def Dirac_operator(adj, sign, D=None, triangles=None, A=None):
     N = len(adj) // 3
+    D0 = np.copy(D)  #delete after fix
     if D is None:
         D = np.zeros(shape=(2 * N, 2 * N))
     if triangles is None:
@@ -73,12 +74,17 @@ def Dirac_operator(adj, sign, D=None, triangles=None, A=None):
 
             alpha = theta[k] - theta[adj[edge] % 3] + np.pi
             U = sign[edge] * paral_trans((alpha + A[edge]) / 2)  # factor of 1/2 accounts for spinor transport
-            H_0 = 1/2 * np.cos(theta[k]) * np.matmul(id + gamma1, U) - 1/2 * np.sin(theta[k]) * np.matmul(id + gamma2, U) - id
+            # Check if we should subtract the identity from H_0
+            H_0 = 1/2 * np.cos(theta[k]) * np.matmul(id + gamma1, U) - 1/2 * np.sin(theta[k]) * np.matmul(id + gamma2, U)
             H = -_K * np.matmul(eps, H_0)
 
             for a in range(2):
                 for b in range(2):
                     D[i+a, j+b] = H[a, b]
+
+    det = np.linalg.slogdet(D)
+    if det[0] == -1:
+        print("sign(det) = -1")
     return D
 
 ### check action calculation thoroughly     ### check why psi tends to diverge
