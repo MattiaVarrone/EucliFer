@@ -75,7 +75,7 @@ def Dirac_operator(adj, sign, D=None, triangles=None, A=None):
             alpha = theta[k] - theta[adj[edge] % 3] + np.pi
             U = sign[edge] * paral_trans((alpha + A[edge]) / 2)  # factor of 1/2 accounts for spinor transport
             # Check if we should subtract the identity from H_0
-            H_0 = 1/2 * np.cos(theta[k]) * np.matmul(id + gamma1, U) - 1/2 * np.sin(theta[k]) * np.matmul(id + gamma2, U)
+            H_0 = 1/2 * np.matmul(id + np.cos(theta[k]) * gamma1 - np.sin(theta[k]) * gamma2, U)
             H = -_K * np.matmul(eps, H_0)
 
             for a in range(2):
