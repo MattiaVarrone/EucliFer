@@ -1,6 +1,7 @@
 import sys
 import unittest
 
+import numpy as np
 import scipy.linalg
 from timebudget import timebudget
 
@@ -82,7 +83,7 @@ class TestConnection(unittest.TestCase):
 class TestAction(unittest.TestCase):
     @timebudget
     def test_dirac_determinant_sign(self):
-        N = 42
+        N = 30
         m = Manifold(N)
         strategy = ['gravity', 'spinor_free']
 
@@ -95,23 +96,21 @@ class TestAction(unittest.TestCase):
             m.random_update(beta=0.6, strategy=strategy)
             det_sign = np.linalg.slogdet(m.D)[0]
             self.assertEqual(1, det_sign)
-            print(it)
 
     def test_dirac_operator_antisymm(self):
-        N = 42
+        N = 30
         m = Manifold(N)
         strategy = ['gravity', 'spinor_free']
 
         # check if the fan triangulation has a consistent dirac determinant sign
         D_sym = (m.D + m.D.T)/2
-        np.testing.assert_allclose(D_sym, np.zeros(m.D.shape))
+        np.testing.assert_allclose(D_sym, np.zeros_like(D_sym), atol=1e-7)
 
         # check if edge flips preserve the consistency of the dirac determinant sign
         for it in range(10 * N):
             m.random_update(beta=0.6, strategy=strategy)
             D_sym = (m.D + m.D.T) / 2
-            np.testing.assert_allclose(D_sym, np.zeros(m.D.shape))
-            print(it)
+            np.testing.assert_allclose(D_sym, np.zeros_like(D_sym), atol=1e-7)
 
 
 if __name__ == '__main__':

@@ -55,12 +55,18 @@ def S_spinor(D):
 
 def Dirac_operator(adj, sign, D=None, triangles=None, A=None):
     N = len(adj) // 3
-    D1 = np.copy(D)   #delete after fix
+
+    D = None ### remove later
+    triangles = None
+
     if D is None:
         D = np.zeros(shape=(2 * N, 2 * N))
-        D1 = np.copy(D)
+    D1 = np.copy(D)
     if triangles is None:
         triangles = range(N)
+
+    ### first DELETE ROWS TO BE UPDATED
+
     if A is None:
         A = np.zeros(3*N)
 
@@ -77,19 +83,20 @@ def Dirac_operator(adj, sign, D=None, triangles=None, A=None):
             adj_c = adj[edge] // 3
             j = adj_c * 2
 
-            sink, sinq, cosk, cosq = np.sin(theta[k])/2, np.sin(theta[q])/2, np.cos(theta[k])/2, np.cos(theta[q])/2
-            H = -_K * sign[edge] * np.array([[-sink * sinq, sinq * cosk], [sink * cosq, cosk * cosq]])
+            sink, sinq, cosk, cosq = np.sin(theta[k]/2), np.sin(theta[q]/2), np.cos(theta[k]/2), np.cos(theta[q]/2)
+            H1 = -_K * sign[edge] * np.array([[-sink * sinq, -sinq * cosk], [-sink * cosq, -cosk * cosq]])
 
             alpha = theta[k] - theta[adj[edge] % 3] + np.pi
             U = sign[edge] * paral_trans((alpha + A[edge]) / 2)  # factor of 1/2 accounts for spinor transport
             # Check if we should subtract the identity from H_0
-            H_1 = 1/2 * np.matmul(id + np.cos(theta[k]) * gamma1 + np.sin(theta[k]) * gamma2, U)   ### +/- sin(theta)?
-            H1 = -_K * np.matmul(eps, H_1)
+            H_0 = 1/2 * np.matmul(id + np.cos(theta[k]) * gamma1 - np.sin(theta[k]) * gamma2, U)   ### +/- sin(theta)?
+            H = -_K * np.matmul(eps, H_0)
+
 
             for a in range(2):
                 for b in range(2):
-                    D[i+a, j+b] = H[a, b]
-                    D1[i + a, j + b] = H1[a, b]
+                    D[i + a, j + b] += H[a, b]
+                    D1[i + a, j + b] += H1[a, b]
 
     det = np.linalg.slogdet(D)
     if det[0] == -1:
@@ -135,6 +142,6 @@ def S_psi_free_boson(adj, psi, c, sign):
         d_psi_y += d_psi * np.sin(theta[i])
 
     D_psi = np.matmul(id + gamma1, d_psi_x) / 2 + np.matmul(id + gamma2, d_psi_y) / 2
-    psi_bar = np.matmul(eps, psi[c])      ### check how to calc psi_bar
+    psi_bar = np.matmul(eps, psi[c])                  ### check how to calc psi_bar
     S = -_K * np.matmul(psi_bar, D_psi) + _mass * 2 * psi[c, 0] * psi[c, 1]
     return np.real(S)

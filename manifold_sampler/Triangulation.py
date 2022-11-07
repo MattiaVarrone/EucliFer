@@ -24,7 +24,7 @@ def circle_vertex(adj, sign, i):
 class Manifold:
     # Simplicial Manifold: created by piecing triangles together with the topology of a sphere
 
-    def __init__(self, N, comb=[0, 1, 2]):
+    def __init__(self, N):
         self.N = N
         self.adj = fan_triangulation(N)
 
@@ -32,7 +32,7 @@ class Manifold:
         self.sigma = np.ones(N)
 
         self.A = np.zeros(3 * N)  # variable gauge link
-        self.sign = fan_sign(self.adj, comb)  # gauge link sign corresponding to edges
+        self.sign = fan_sign(self.adj, [0, 1, 2])  # gauge link sign corresponding to edges
         self.D = Dirac_operator(self.adj, self.sign, A=self.A)
 
     def random_update(self, beta, strategy):

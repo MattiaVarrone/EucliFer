@@ -4,12 +4,12 @@ from Analysis_utils import *
 from scipy.interpolate import CubicSpline
 
 # params for the lattice-matter system and sampling
-size_min, size_max, n_sizes = 100, 500, 10
+size_min, size_max, n_sizes = 50, 200, 8
 sizes = [(int(i) // 4) * 4 + 2 for i in np.geomspace(size_min, size_max, n_sizes)]
 beta = 0.63
 matter = 'spinor_free'
 strategy = ['gravity', matter]
-eq_sweeps, meas_sweeps, n_measurements = 200, 2, 200
+eq_sweeps, meas_sweeps, n_measurements = 100, 2, 100
 
 # getting the array index of the hpc batch
 array_id = os.getenv('SLURM_ARRAY_TASK_ID')
