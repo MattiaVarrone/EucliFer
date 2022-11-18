@@ -15,7 +15,7 @@
 #! What types of email messages do you wish to receive?
 #SBATCH --mail-type=NONE
 #!ARRAY JOB
-#SBATCH --array=1-20
+#SBATCH --array=1-30
 
 #! Each task is allocated 1 core by default, and each core is allocated 5980MB (skylake)
 #! and 12030MB (skylake-himem). If this is insufficient, also specify

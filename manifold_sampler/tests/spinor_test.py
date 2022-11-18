@@ -65,7 +65,7 @@ class TestConnection(unittest.TestCase):
                 self.assertAlmostEqual(trace_plaquette, np.cos(def_triangles * np.pi / 6))
 
     def test_gauge_sign(self):
-        N = 10
+        N = 22
         m = Manifold(N)
         strategy = ['gravity', 'spinor_free']
 
@@ -73,7 +73,7 @@ class TestConnection(unittest.TestCase):
         for edge in m.adj:
             self.assertEqual(m.sign[edge], -m.sign[m.adj[edge]])
 
-        for _ in range(3 * N):
+        for _ in range(22 * N):
             m.random_update(0.5, strategy)
             for edge in m.adj:
                 self.assertEqual(m.sign[edge], -m.sign[m.adj[edge]])
@@ -83,7 +83,7 @@ class TestConnection(unittest.TestCase):
 class TestAction(unittest.TestCase):
     @timebudget
     def test_dirac_determinant_sign(self):
-        N = 30
+        N = 22
         m = Manifold(N)
         strategy = ['gravity', 'spinor_free']
 
@@ -97,8 +97,9 @@ class TestAction(unittest.TestCase):
             det_sign = np.linalg.slogdet(m.D)[0]
             self.assertEqual(1, det_sign)
 
+    @timebudget
     def test_dirac_operator_antisymm(self):
-        N = 30
+        N = 22
         m = Manifold(N)
         strategy = ['gravity', 'spinor_free']
 

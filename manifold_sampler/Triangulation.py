@@ -47,7 +47,7 @@ class Manifold:
             self.update_spin(random_centre, beta)
         if 'spinor_inter' in strategy:
             random_side = rng.integers(0, len(self.adj))
-            self.A = self.update_gauge(random_side, self.A, A_range, action=S_psi_inter, beta=beta, matt_field=self.psi)  ### TO BE CHANGED
+            self.A = self.update_gauge(random_side, self.A, A_range, beta=beta)  ### TO BE CHANGED
 
     def sweep(self, n_sweeps, beta, strategy):
         n = n_sweeps * 3 * self.N
@@ -100,6 +100,13 @@ class Manifold:
                 sign_new[l] = -self.sign[i]
                 sign_new[j] = -sign_new[l]
 
+                if 'spinor_inter' in strategy:
+                    A_new[i] = -self.A[n]
+                    A_new[k] = -self.A[m]
+                    A_new[m] = -A_new[k]  # accounts for the case when j == n
+                    A_new[l] = -self.A[i]
+                    A_new[j] = -A_new[l]
+
                 for edge in (i, j, k):
                     U, def_triangles = circle_vertex(adj_new, sign_new, edge)
                     trace = np.trace(U) / 2
@@ -113,22 +120,14 @@ class Manifold:
                     sign_new[edge] *= s
                     sign_new[adj_new[edge]] = -sign_new[edge]
 
-                D_new = Dirac_operator(adj_new, sign_new, D=D_new, triangles=(c1, c2), A=A_new)
+                c3 = m // 3
+                c4 = n // 3
+
+                D_new = Dirac_operator(adj_new, sign_new, D=D_new, triangles=[c1, c2, c3, c4], A=A_new)
 
                 # action variation
                 S_old = S_spinor(self.D)
                 S_new = S_spinor(D_new)
-                dS += S_new - S_old
-            if 'spinor_inter' in strategy:
-                # gauge links corresponding to adjacent sides must be opposites
-                A_new[i] = -self.A[n]
-                A_new[k] = -self.A[m]
-                A_new[m] = -A_new[k]   # accounts for the case when j == n
-                A_new[l] = -self.A[i]
-                A_new[j] = -A_new[l]
-
-                S_old = S_psi_inter(self.adj, self.psi, c1, self.A) + S_psi_inter(self.adj, self.psi, c2, self.A)
-                S_new = S_psi_inter(adj_new, self.psi, c1, A_new) + S_psi_inter(adj_new, self.psi, c2, A_new)
                 dS += S_new - S_old
 
             p = np.exp(-beta * dS)
@@ -156,15 +155,19 @@ class Manifold:
             field = field_new
         return field
 
-    def update_gauge(self, i, gauge, gauge_range, action, beta, matt_field):
+    def update_gauge(self, i, gauge, gauge_range, beta):
         gauge_new = np.copy(gauge)
         gauge_diff = np.random.normal(size=gauge[0].shape)
         gauge_new[i] += gauge_range * gauge_diff  # proposed update
         gauge_new[self.adj[i]] = -gauge_new[i]  # adjacent link must be updated as well
 
-        c = i // 3
-        S_old = action(self.adj, matt_field, c, gauge)
-        S_new = action(self.adj, matt_field, c, gauge_new)
+        c1 = i // 3
+        c2 = self.adj[i] // 3
+        D_new = Dirac_operator(self.adj, self.sign, D=self.D, triangles=(c1, c2), A=self.A)
+
+        # action variation
+        S_old = S_spinor(self.D)
+        S_new = S_spinor(D_new)
         dS = S_new - S_old
 
         p = np.exp(-beta * dS)
@@ -189,9 +192,7 @@ class Manifold:
             if 'scalar' in strategy:
                 S += S_phi(self.adj, self.phi, c)
             if 'spinor_free' in strategy:
-                S += S_spinor(self.adj, self.sign)
-            if 'spinor_inter' in strategy:
-                S += S_psi_inter(self.adj, self.psi, c, self.A)
+                S += S_spinor(self.D)
             if 'ising' in strategy:
                 S += S_sigma(self.adj, self.sigma, c)
         return S

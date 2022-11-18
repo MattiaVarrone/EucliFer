@@ -56,9 +56,6 @@ def S_spinor(D):
 def Dirac_operator(adj, sign, D=None, triangles=None, A=None):
     N = len(adj) // 3
 
-    D = None ### remove later
-    triangles = None
-
     if D is None:
         D = np.zeros(shape=(2 * N, 2 * N))
     D1 = np.copy(D)
@@ -72,6 +69,7 @@ def Dirac_operator(adj, sign, D=None, triangles=None, A=None):
 
     for c in triangles:
         i = 2 * c
+        D[i:i+2].fill(0)  # re-initializes row before making changes
         D[i, i + 1] = _mass
         D[i + 1, i] = -_mass
         D1[i, i + 1] = _mass
@@ -88,8 +86,7 @@ def Dirac_operator(adj, sign, D=None, triangles=None, A=None):
 
             alpha = theta[k] - theta[adj[edge] % 3] + np.pi
             U = sign[edge] * paral_trans((alpha + A[edge]) / 2)  # factor of 1/2 accounts for spinor transport
-            # Check if we should subtract the identity from H_0
-            H_0 = 1/2 * np.matmul(id + np.cos(theta[k]) * gamma1 - np.sin(theta[k]) * gamma2, U)   ### +/- sin(theta)?
+            H_0 = 1/2 * np.matmul(id + np.cos(theta[k]) * gamma1 - np.sin(theta[k]) * gamma2, U)   ### should we subtract identity?
             H = -_K * np.matmul(eps, H_0)
 
 
@@ -102,46 +99,3 @@ def Dirac_operator(adj, sign, D=None, triangles=None, A=None):
     if det[0] == -1:
         print("sign(det) = -1")
     return D
-
-### check action calculation thoroughly     ### check why psi tends to diverge
-### check how to obtain real action: take imag() or use hermit conjugate
-
-
-### Possibly obsolete
-
-def S_psi_inter(adj, psi, c, A):
-    d_psi_x, d_psi_y = 0, 0
-
-    for i in range(3):
-        j = 3 * c + i
-        theta = 2 * i * np.pi / 3
-        adj_c = adj[j] // 3
-
-        # we need parallel transport to take derivatives
-        d_psi = (np.matmul(paral_trans(A[j]), psi[adj_c]) - psi[c])  ### check how to calculate parallel transporter
-        d_psi_x += d_psi * np.cos(theta)
-        d_psi_y += d_psi * np.sin(theta)
-
-    D_psi = np.matmul(id + gamma1, d_psi_x) / 2 + np.matmul(id + gamma2, d_psi_y) / 2
-    psi_bar = np.conj(np.matmul(psi[c], eps))  ### check how to calc psi_bar
-    S = _K * np.imag(np.matmul(psi_bar, D_psi)) + _mass * np.real(np.matmul(psi_bar, psi[c]))
-    return S
-
-
-def S_psi_free_boson(adj, psi, c, sign):
-    d_psi_x, d_psi_y = 0, 0
-
-    for i in range(3):
-        j = 3 * c + i
-        adj_c = adj[j] // 3
-        alpha = theta[i] - theta[adj[j] % 3] + np.pi
-        U = sign[j] * paral_trans(alpha/2)            # factor of 1/2 accounts for spinor transport
-                                                      # (I should store the possible values of U)
-        d_psi = (np.matmul(U, psi[adj_c]) - psi[c])
-        d_psi_x += d_psi * np.cos(theta[i])
-        d_psi_y += d_psi * np.sin(theta[i])
-
-    D_psi = np.matmul(id + gamma1, d_psi_x) / 2 + np.matmul(id + gamma2, d_psi_y) / 2
-    psi_bar = np.matmul(eps, psi[c])                  ### check how to calc psi_bar
-    S = -_K * np.matmul(psi_bar, D_psi) + _mass * 2 * psi[c, 0] * psi[c, 1]
-    return np.real(S)
