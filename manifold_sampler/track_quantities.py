@@ -2,13 +2,13 @@ import numpy as np
 
 from Analysis_utils import *
 
-N = 190
-beta = 0.6
+N = 42
+beta = 0.216
 strategy = ['gravity', 'spinor_free']
 
 l = Manifold(N)
 
-range = range(50)
+range = range(100)
 Ss = []
 Phis = []
 Ms = []
@@ -27,6 +27,3 @@ ax[0].plot(range, Ss), ax[0].set_title("Action")
 ax[1].plot(range, Phis), ax[1].set_title("Phi")
 ax[2].plot(range, Ms), ax[2].set_title("Magn")
 plt.show()
-
-
-

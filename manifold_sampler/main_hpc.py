@@ -6,10 +6,10 @@ from scipy.interpolate import CubicSpline
 # params for the lattice-matter system and sampling
 size_min, size_max, n_sizes = 80, 400, 10
 sizes = [(int(i) // 4) * 4 + 2 for i in np.geomspace(size_min, size_max, n_sizes)]
-beta = 0.63
+beta = 0.216
 matter = 'spinor_free'
 strategy = ['gravity', matter]
-eq_sweeps, meas_sweeps, n_measurements = 40, 3, 200   ### Try longer decorr time
+eq_sweeps, meas_sweeps, n_measurements = 40, 2, 250   ### Try longer decorr time
 
 # getting the array index of the hpc batch
 array_id = os.getenv('SLURM_ARRAY_TASK_ID')
@@ -89,8 +89,12 @@ if __name__ == '__main__':
     print(f'{d_H = }' + '+/-' + f'{d_H_err = }')
     print(f'{a = }' + '+/-' + f'{a_err = }')
 
-    if matter == 'spinor_free':
-        with open(r"data/haussdorf_spinor_free.csv", "a") as f:
-            writer = csv.writer(f)
-            writer.writerow([round(d_H_ws, 3), round(d_H_err_ws, 3), round(d_H, 3), round(d_H_err, 3),
-                             size_min, size_max, n_sizes])
+    loc = r"data/haussdorf_"
+    for m in sorted(strategy[1:]):
+        loc = loc + m + "_"
+    loc = loc + r".csv"
+
+    with open(loc, "a") as f:
+        writer = csv.writer(f)
+        writer.writerow([round(d_H_ws, 3), round(d_H_err_ws, 3), round(d_H, 3), round(d_H_err, 3),
+                         size_min, size_max, n_sizes])
