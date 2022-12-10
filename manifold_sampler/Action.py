@@ -14,7 +14,14 @@ sigma_const = 1
 _K = 0.3746166
 psi_range = 0.7
 A_range = 1
-_mass = 1 / 2
+_mass = 0.5 / _K
+
+# params of Dirac_Yukawa_action
+a_psi = 1
+a_chi = 1
+mu_phi = 1
+mu_rho = 1
+mu_phi_rho = 1
 
 # parallel transport of free spinors
 theta = [np.pi, np.pi / 3, 5 * np.pi / 3]
@@ -53,6 +60,52 @@ def S_spinor(D):
     return 1 / 2 * logdet[1]
 
 
+def Dirac_Yukawa_op(adj, sign, D=None, triangles=None, phi=None,  A=None):
+    N = len(adj) // 3
+
+    if D is None:
+        D = np.zeros(shape=(2 * N, 2 * N))
+    D1 = np.copy(D)
+    if triangles is None:
+        triangles = range(N)
+    if A is None:
+        A = np.zeros(3 * N)
+
+    for c in triangles:
+        i = 2 * c
+        D[i:i + 2].fill(0)  # re-initializes row before making changes
+        D[i, i] = _mass + 0.5*a_psi*phi[c]
+        D[i + 1, i + 1] = D[i, i]
+
+        D1[i:i + 2].fill(0)
+        D1[i, i] = _mass + 0.5 * a_psi * phi[c]
+        D1[i + 1, i + 1] = D1[i, i]
+
+        for k in range(3):
+            edge = 3 * c + k
+            q = adj[edge] % 3
+            adj_c = adj[edge] // 3
+            j = adj_c * 2
+
+            sink, sinq, cosk, cosq = np.sin(theta[k] / 2), np.sin(theta[q] / 2), np.cos(theta[k] / 2), np.cos(
+                theta[q] / 2)
+            H1 = sign[edge] * np.array([[cosk * cosq, -sinq * cosk], [-sink * cosq, sink * sinq]])
+
+            alpha = theta[k] - theta[adj[edge] % 3] + np.pi
+            U = sign[edge] * paral_trans((alpha + A[edge]) / 2)  # factor of 1/2 accounts for spinor transport
+            H_0 = 1 / 2 * np.matmul(id + np.cos(theta[k]) * gamma1 - np.sin(theta[k]) * gamma2, U)
+            H = np.matmul(eps, H_0)
+
+            for a in range(2):
+                for b in range(2):
+                    D[i + a, j + b] += H[a, b]
+                    D1[i + a, j + b] += H1[a, b]
+
+    det = np.linalg.slogdet(D1)
+    if det[0] == -1:
+        print("sign(det) = -1")
+    return D1
+
 
 def Dirac_operator(adj, sign, D=None, triangles=None, A=None):
     N = len(adj) // 3
@@ -62,8 +115,6 @@ def Dirac_operator(adj, sign, D=None, triangles=None, A=None):
     D1 = np.copy(D)
     if triangles is None:
         triangles = range(N)
-
-    ### first DELETE ROWS TO BE UPDATED
 
     if A is None:
         A = np.zeros(3 * N)
@@ -85,12 +136,12 @@ def Dirac_operator(adj, sign, D=None, triangles=None, A=None):
 
             sink, sinq, cosk, cosq = np.sin(theta[k] / 2), np.sin(theta[q] / 2), np.cos(theta[k] / 2), np.cos(
                 theta[q] / 2)
-            H1 = -_K * sign[edge] * np.array([[cosk * cosq, -sinq * cosk], [-sink * cosq, sink * sinq]])
+            H1 = sign[edge] * np.array([[cosk * cosq, -sinq * cosk], [-sink * cosq, sink * sinq]])
 
             alpha = theta[k] - theta[adj[edge] % 3] + np.pi
             U = sign[edge] * paral_trans((alpha + A[edge]) / 2)  # factor of 1/2 accounts for spinor transport
             H_0 = 1 / 2 * np.matmul(id + np.cos(theta[k]) * gamma1 - np.sin(theta[k]) * gamma2, U)  ### should we subtract identity?
-            H = -_K * np.matmul(eps, H_0)
+            H = np.matmul(eps, H_0)
 
             for a in range(2):
                 for b in range(2):

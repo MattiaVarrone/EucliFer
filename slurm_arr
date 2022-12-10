@@ -13,7 +13,7 @@
 #! Where do you store the output?
 #SBATCH --output="./output/%a-slurm.out"
 #! What types of email messages do you wish to receive?
-#SBATCH --mail-type=NONE
+#SBATCH --mail-type=END
 #!ARRAY JOB
 #SBATCH --array=1-20
 

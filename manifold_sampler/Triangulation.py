@@ -24,11 +24,11 @@ def circle_vertex(adj, sign, i):
 class Manifold:
     # Simplicial Manifold: created by piecing triangles together with the topology of a sphere
 
-    def __init__(self, N):
+    def __init__(self, N, n_scalars=0, n_spinors=0):
         self.N = N
         self.adj = fan_triangulation(N)
 
-        self.phi = np.zeros(N)
+        self.phis = np.zeros(shape=(n_scalars, N))
         self.sigma = np.ones(N)
 
         self.A = np.zeros(3 * N)  # variable gauge link
@@ -41,7 +41,8 @@ class Manifold:
             self.flip_edge(random_side, beta, strategy=strategy)
         if 'scalar' in strategy:
             random_centre = rng.integers(0, self.N)
-            self.phi = self.update_field(random_centre, self.phi, phi_range, action=S_phi, beta=beta)
+            for phi in self.phi:
+                phi = self.update_field(random_centre, phi, phi_range, action=S_phi, beta=beta)
         if 'ising' in strategy:
             random_centre = rng.integers(0, self.N)
             self.update_spin(random_centre, beta)
@@ -84,9 +85,10 @@ class Manifold:
             c2 = k // 3
 
             if 'scalar' in strategy:
-                S_old = S_phi(self.adj, self.phi, c1) + S_phi(self.adj, self.phi, c2)
-                S_new = S_phi(adj_new, self.phi, c1) + S_phi(adj_new, self.phi, c2)
-                dS += S_new - S_old
+                for phi in self.phis:
+                    S_old = S_phi(self.adj, phi, c1) + S_phi(self.adj, phi, c2)
+                    S_new = S_phi(adj_new, phi, c1) + S_phi(adj_new, phi, c2)
+                    dS += S_new - S_old
             if 'ising' in strategy:
                 S_old = S_sigma(self.adj, self.sigma, c1) + S_sigma(self.adj, self.sigma, c2)
                 S_new = S_sigma(adj_new, self.sigma, c1) + S_sigma(adj_new, self.sigma, c2)
@@ -178,8 +180,8 @@ class Manifold:
     def update_spin(self, c, beta):
         sigma_new = np.copy(self.sigma)
         sigma_new[c] *= -1
-        S_old = S_phi(self.adj, self.sigma, c)
-        S_new = S_phi(self.adj, sigma_new, c)
+        S_old = S_sigma(self.adj, self.sigma, c)
+        S_new = S_sigma(self.adj, sigma_new, c)
         dS = S_new - S_old
 
         p = np.exp(-beta * dS)
@@ -190,7 +192,8 @@ class Manifold:
         S = 0
         for c in range(self.N):
             if 'scalar' in strategy:
-                S += S_phi(self.adj, self.phi, c)
+                for phi in self.phis:
+                    S += S_phi(self.adj, phi, c)
             if 'spinor_free' in strategy:
                 S += S_spinor(self.D)
             if 'ising' in strategy:
