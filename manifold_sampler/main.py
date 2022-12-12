@@ -1,7 +1,7 @@
 from Analysis_utils import *
 
-N = 6 ### needs to be multiple of 4 + 2
-n_sweeps = 1
+N = 10
+n_sweeps = 100
 
 beta = 0.63
 l = Manifold(N)

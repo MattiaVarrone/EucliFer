@@ -57,7 +57,7 @@ def paral_trans(A):  ### check how to calculate parallel transporter
 
 def S_spinor(D):
     logdet = np.linalg.slogdet(D)
-    return 1 / 2 * logdet[1]
+    return - 1 / 2 * logdet[1]     ### important: minus sign
 
 
 def Dirac_Yukawa_op(adj, sign, D=None, triangles=None, phi=None,  A=None):
@@ -136,19 +136,15 @@ def Dirac_operator(adj, sign, D=None, triangles=None, A=None):
 
             sink, sinq, cosk, cosq = np.sin(theta[k] / 2), np.sin(theta[q] / 2), np.cos(theta[k] / 2), np.cos(
                 theta[q] / 2)
-            H1 = sign[edge] * np.array([[cosk * cosq, -sinq * cosk], [-sink * cosq, sink * sinq]])
+            H1 = - sign[edge] * np.array([[-cosk * cosq, sinq * cosk], [sink * cosq, -sink * sinq]])
 
             alpha = theta[k] - theta[adj[edge] % 3] + np.pi
             U = sign[edge] * paral_trans((alpha + A[edge]) / 2)  # factor of 1/2 accounts for spinor transport
-            H_0 = 1 / 2 * np.matmul(id + np.cos(theta[k]) * gamma1 - np.sin(theta[k]) * gamma2, U)  ### should we subtract identity?
-            H = np.matmul(eps, H_0)
+            H_0 = 1 / 2 * np.matmul(id - np.cos(theta[k]) * gamma1 + np.sin(theta[k]) * gamma2, U)  ### should we subtract identity?
+            H = - np.matmul(eps, H_0)
 
             for a in range(2):
                 for b in range(2):
                     D[i + a, j + b] += H[a, b]
                     D1[i + a, j + b] += H1[a, b]
-
-    det = np.linalg.slogdet(D1)
-    if det[0] == -1:
-        print("sign(det) = -1")
-    return D1
+    return D
