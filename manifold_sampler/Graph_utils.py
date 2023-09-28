@@ -16,7 +16,7 @@ def fan_triangulation(n):
                     dtype=np.int32).flatten()
 
 
-def fan_sign(adj, comb):
+def fan_sign(adj, comb=[0, 1, 2]):
     sign = np.ones(len(adj))
     for i in range(len(adj)):
         if i % 6 in comb:

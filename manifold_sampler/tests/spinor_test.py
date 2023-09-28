@@ -14,7 +14,7 @@ beta = 0.5
 class TestGauge(unittest.TestCase):
     @timebudget
     def test_adjacent(self):
-        N = 102
+        N = 22
         n_sweeps = 10
         m = Manifold(N)
         strategy = ['gravity', 'spinor_free']

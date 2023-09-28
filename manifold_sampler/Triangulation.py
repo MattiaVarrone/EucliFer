@@ -14,7 +14,7 @@ def circle_vertex(adj, sign, i):
     while j != i:
         alpha = theta[j % 3] - theta[adj[j] % 3] + np.pi
         U_1 = sign[j] * paral_trans(alpha / 2)
-        U = np.matmul(U, U_1)
+        U = np.matmul(U_1, U)
         def_triangles -= 1
         j = prev_(adj[j])
 
@@ -32,7 +32,7 @@ class Manifold:
         self.sigma = np.ones(N)
 
         self.A = np.zeros(3 * N)  # variable gauge link
-        self.sign = fan_sign(self.adj, [0, 1, 2])  # gauge link sign corresponding to edges
+        self.sign = fan_sign(self.adj)  # gauge link sign corresponding to edges
         self.D = Dirac_operator(self.adj, self.sign, A=self.A)
 
     def random_update(self, beta, strategy):
@@ -71,7 +71,7 @@ class Manifold:
             n = adj_new[l]
             adj_new[i] = n  # it is important that we first update
             adj_new[n] = i  # these adjacencies, before determining m,
-            m = adj_new[j]  # to treat the case j == n appropriately
+            m = adj_new[j]  # to treat the case j == n (or m==l) appropriately
             adj_new[k] = m
             adj_new[m] = k
             adj_new[j] = l
